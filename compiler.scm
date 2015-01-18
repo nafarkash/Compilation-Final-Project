@@ -541,6 +541,44 @@
 	)
 )
 
+(define prolog
+	(lambda ()
+		(string-append
+			"include <stdio.h>" nl
+			"#include <stdlib.h>" nl
+
+			"/* change to 0 for no debug info to be printed: */" nl
+			"#define DO_SHOW 1" nl
+
+			"#include "cisc.h"" nl
+			"#include "char.lib"" nl
+			"#include "io.lib"" nl
+			"#include "math.lib"" nl
+			"#include "string.lib"" nl
+			"#include "system.lib"" nl
+			"#include "scheme.lib"" nl
+
+			"int main()" nl
+			"{" nl
+			  "START_MACHINE" nl
+			  "add (ind(0), imm(1000))" nl
+			  "mov (ind(100), imm(T_VOID))" nl
+			  "#def sob_void 100" nl
+			  "mov (ind(101), imm(T_NIL))" nl
+			  "#def sob_void 101" nl
+			  "mov (ind(102), imm(T_BOOL))" nl
+			  "mov (ind(103), imm(0))" nl
+			  "#def sob_false 102" nl
+			  "mov (ind(104), imm(T_BOOL))" nl
+			  "mov (ind(105), imm(1))" nl
+			  "#def sob_true 104" nl
+
+
+
+			
+		)
+	)
+)
 
 
 ;; Recieves two strings.
