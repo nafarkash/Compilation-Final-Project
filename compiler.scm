@@ -547,7 +547,7 @@
 ;; Reading from the input file and exporting the compiled code to output file.
 (define compile-scheme-file
 	(lambda (imput output)
-		naor farkash
+		
 	)
 )
 
@@ -582,7 +582,11 @@
 					"MOV(R0, IMM(sob_false))"
 				)
 			)
-
+			((string? e) )
+			((number? e) )
+			((char? e) )
+			(else (error 'code-gen-const
+				(format "I can't recognize this: ~s" e)))
 		)
 	)
 )
