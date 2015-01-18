@@ -522,9 +522,32 @@
         label-exit ":"))))))
 
 
+((define file->sexpr
+	(lambda (filename)
+		(let ((input (open-input-file filename)))
+			(letrec ((run
+					(lambda ()
+						(let ((e (read input)))
+						(if (eof-object? e)
+							(begin (close-input-port input)
+								'())
+							(cons e (run))
+							)
+						))
+					)	
+			))
+			(run)
+		)
+	)
+)
+
+
+
+;; Recieves two strings.
+;; Reading from the input file and exporting the compiled code to output file.
 (define compile-scheme-file
 	(lambda (imput output)
-		
+		naor farkash
 	)
 )
 
