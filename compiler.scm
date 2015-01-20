@@ -580,12 +580,22 @@
 	)
 )
 
+(define epilog
+	(lambda ()
+		(string-append
+			 "STOP_MACHINE;" nl
+  			"return 0;" nl
+			"}" nl
+		)
+	)
+)
+
 
 ;; Recieves two strings.
 ;; Reading from the input file and exporting the compiled code to output file.
 (define compile-scheme-file
-	(lambda (imput output)
-		
+	(lambda (input output)
+		(let (file->sexpr input)
 	)
 )
 
@@ -629,4 +639,3 @@
 	)
 )
 
-this is a try
