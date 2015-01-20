@@ -348,31 +348,31 @@
 (define pred-or? (lambda (e) (eq? (car e) 'or)))
 
 (define if-test (lambda (e) (cadr e)))
-(define if-dit (lambda (e) (caddr e)))
-(define if-dif (lambda (e) (cadddr e)))
+(define if-dit (lambda (e) (cADDr e)))
+(define if-dif (lambda (e) (cADDdr e)))
 (define seq-body (lambda (e) (cadr e)))
 (define or-body (lambda (e) (cadr e)))
 (define applic-proc (lambda (e) (cadr e)))
-(define applic-args (lambda (e) (caddr e)))
+(define applic-args (lambda (e) (cADDr e)))
 (define define-param (lambda (e) (cadr e)))
-(define define-body (lambda (e) (caddr e)))
+(define define-body (lambda (e) (cADDr e)))
 (define lambda-args (lambda (e) (cadr e)))
-(define lambda-body (lambda (e) (caddr e)))
+(define lambda-body (lambda (e) (cADDr e)))
 
-(define find-pos 
+(define fIND-pos 
 	(lambda (lst elem pos)
 		(cond ((null? lst) #f)
 			((eq? (car lst) elem) pos)
-			(else (find-pos (cdr lst) elem (add1 pos)))
+			(else (fIND-pos (cdr lst) elem (ADD1 pos)))
 		)	
 	)
 )
 
-(define find-in-bvar
+(define fIND-in-bvar
 	(lambda (env elem pos)
 		(cond ((null? env) #f)
-			((find-pos (car env) elem 0) (list pos (find-pos (car env) elem 0)))
-			(else (find-in-bvar (cdr env) elem (add1 pos)))
+			((fIND-pos (car env) elem 0) (list pos (fIND-pos (car env) elem 0)))
+			(else (fIND-in-bvar (cdr env) elem (ADD1 pos)))
 		)
 	)
 )
@@ -380,10 +380,10 @@
 (define var-handler
 	(lambda (pe params env)
 		(let* ((var (cadr pe))
-				(position (find-pos params var 0)))
+				(position (fIND-pos params var 0)))
 			(if position 
 				`(pvar ,var ,position)
-				(let ((bvar-position (find-in-bvar env var -1)))
+				(let ((bvar-position (fIND-in-bvar env var -1)))
 					(if bvar-position
 						`(bvar ,var ,@bvar-position)
 						`(fvar ,var)
@@ -406,9 +406,9 @@
 				`(lambda-variadic ,(lambda-args pe) 
 					,(parse-lex (lambda-body pe) (list (lambda-args pe)) (cons (list (lambda-args pe)) env))))
 			((pred-lambda-opt? pe)
-				(let ((args (append (cadr pe) (list (caddr pe))))
-					(body (cadddr pe)))
-				`(lambda-opt ,(cadr pe) ,(caddr pe) ,(parse-lex body args (cons args env)))
+				(let ((args (append (cadr pe) (list (cADDr pe))))
+					(body (cADDdr pe)))
+				`(lambda-opt ,(cadr pe) ,(cADDr pe) ,(parse-lex body args (cons args env)))
 				))
 			((ormap (lambda (e) (eq? (car pe) e)) '(if3 seq define or applic tc-applic))
 				(cons (car pe) (parse-lex (cdr pe) params env)))
@@ -454,8 +454,8 @@
 			((pred-lambda-variadic? tree) `(lambda-variadic ,(lambda-args tree) ,(ATP (lambda-body tree) #t)))
 			((pred-lambda-opt? tree)
 				(let ((args (cadr tree))
-					(extra-arg (caddr tree))
-					(body (cadddr tree)))
+					(extra-arg (cADDr tree))
+					(body (cADDdr tree)))
 				`(lambda-opt ,args ,extra-arg ,(ATP body #t))))
 
 			((pred-define? tree) `(define ,(define-param tree) ,(ATP (define-body tree) tp?)))
@@ -522,7 +522,7 @@
         label-exit ":"))))))
 
 
-((define file->sexpr
+(define file->sexpr
 	(lambda (filename)
 		(let ((input (open-input-file filename)))
 			(letrec ((run
@@ -535,43 +535,53 @@
 							)
 						))
 					)	
-			))
-			(run)
+			)
+			(run))
 		)
 	)
 )
 
+
+(define writeFile
+  (lambda(str)
+    (let  ((p (open-output-file "prog.c")))
+      (display str p)
+      (close-output-port p)
+    )))
+
+
 (define prolog
 	(lambda ()
 		(string-append
-			"include <stdio.h>" nl
+			"#include <stdio.h>" nl
 			"#include <stdlib.h>" nl
 
 			"/* change to 0 for no debug info to be printed: */" nl
 			"#define DO_SHOW 1" nl
 
-			"#include "cisc.h"" nl
-			"#include "char.lib"" nl
-			"#include "io.lib"" nl
-			"#include "math.lib"" nl
-			"#include "string.lib"" nl
-			"#include "system.lib"" nl
-			"#include "scheme.lib"" nl
-
+			"#include \"./arch/cisc.h\"" nl
+			
 			"int main()" nl
 			"{" nl
 			  "START_MACHINE" nl
-			  "add (ind(0), imm(1000))" nl
-			  "mov (ind(100), imm(T_VOID))" nl
-			  "#def sob_void 100" nl
-			  "mov (ind(101), imm(T_NIL))" nl
-			  "#def sob_void 101" nl
-			  "mov (ind(102), imm(T_BOOL))" nl
-			  "mov (ind(103), imm(0))" nl
-			  "#def sob_false 102" nl
-			  "mov (ind(104), imm(T_BOOL))" nl
-			  "mov (ind(105), imm(1))" nl
-			  "#def sob_true 104" nl
+			  "#include \"arch/char.lib\"" nl
+			  "#include \"arch/io.lib\"" nl
+			  "#include \"arch/math.lib\"" nl
+			  "#include \"arch/string.lib\"" nl
+			  "#include \"arch/system.lib\"" nl
+			  "#include \"arch/scheme.lib\"" nl
+
+			  "ADD (IND(0), IMM(1000))" nl
+			  "MOV (IND(100), IMM(T_VOID))" nl
+			  "#define SOB_VOID 100" nl
+			  "MOV (IND(101), IMM(T_NIL))" nl
+			  "#define SOB_NIL 101" nl
+			  "MOV (IND(102), IMM(T_BOOL))" nl
+			  "MOV (IND(103), IMM(0))" nl
+			  "#define SOB_FALSE 102" nl
+			  "MOV (IND(104), IMM(T_BOOL))" nl
+			  "MOV (IND(105), IMM(1))" nl
+			  "#define SOB_TRUE 104" nl
 
 
 
@@ -583,6 +593,13 @@
 (define epilog
 	(lambda ()
 		(string-append
+			"CMP(R0, SOB_NIL);" nl
+  			"JUMP_EQ(Exit)" nl
+  			"PUSH(R0);" nl
+  			"CALL(WRITE_SOB);" nl
+  			"DROP(1);" nl
+  			"Exit:" nl
+  			"SHOW(\"\\exist with\", R0);" nl
 			 "STOP_MACHINE;" nl
   			"return 0;" nl
 			"}" nl
@@ -595,7 +612,15 @@
 ;; Reading from the input file and exporting the compiled code to output file.
 (define compile-scheme-file
 	(lambda (input output)
-		(let (file->sexpr input)
+		(let* ((text (file->sexpr input))
+			(parsed (string-append 
+						(prolog)
+						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))))) text))
+						(epilog)
+					)))
+		(writeFile parsed))
+		
+			
 	)
 )
 
@@ -610,7 +635,7 @@
 			((pred-lambda-variadic? e) code-gen-lambda-variadic)
 			((pred-seq? e) code-gen-seq)
 			((pred-or? e) code-gen-or)
-			((pred-const? e) code-gen-const)
+			((pred-const? e) (code-gen-const (cadr e)))
 			((pred-applic? e) code-gen-applic)
 			((pred-tc-applic? e) code-gen-tc-applic)
 			(else (error 'code-gen
@@ -622,12 +647,12 @@
 (define code-gen-const
 	(lambda (e)
 		(cond 
-			((null? e) "MOV(R0, IMM(sob_nil))")
-			((void? e) "MOV(R0, IMM(sob_void))")
+			((null? e) "MOV(R0, IMM(SOB_NIL))")
+			((eq? e "void") "MOV(R0, IMM(SOB_VOID))")
 			((boolean? e)
 				(if (eq? e #t)
-					"MOV(R0, IMM(sob_true))"
-					"MOV(R0, IMM(sob_false))"
+					"MOV(R0, IMM(SOB_TRUE)) "
+					"MOV(R0, IMM(SOB_FALSE)) "
 				)
 			)
 			((string? e) )
