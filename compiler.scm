@@ -510,15 +510,15 @@
              (code-dif (code-gen do-if-false))
              (label-else (^label-if3else))
              (label-exit (^label-if3exit)))
-	(string-append
-		code-test nl ; when run, the result of the test will be in R0
-        "CMP(R0, SOB_BOOLEAN_FALSE);" nl
-        "JUMP_EQ(" label-else ");" nl
-		code-dit nl
-        "JUMP(" label-exit ");" nl
-        label-else ":" nl
-        code-dif nl
-        label-exit ":"))))))
+		 (string-append
+			code-test nl ; when run, the result of the test will be in R0
+	        "CMP(R0, SOB_BOOLEAN_FALSE);" nl
+	        "JUMP_EQ(" label-else ");" nl
+			code-dit nl
+	        "JUMP(" label-exit ");" nl
+	        label-else ":" nl
+	        code-dif nl
+	        label-exit ":"))))))
 
 
 (define file->sexpr
@@ -558,28 +558,29 @@
 			"/* change to 0 for no debug info to be printed: */" nl
 			"#define DO_SHOW 1" nl
 
-			"#include \"./arch/cisc.h\"" nl
+			"#include \"arch/cisc.h\"" nl
 			
 			"int main()" nl
 			"{" nl
-			  "START_MACHINE" nl
+			  "START_MACHINE;" nl
+			  "JUMP(CONTINUE);" nl
 			  "#include \"arch/char.lib\"" nl
 			  "#include \"arch/io.lib\"" nl
 			  "#include \"arch/math.lib\"" nl
 			  "#include \"arch/string.lib\"" nl
 			  "#include \"arch/system.lib\"" nl
 			  "#include \"arch/scheme.lib\"" nl
-
-			  "ADD (IND(0), IMM(1000))" nl
-			  "MOV (IND(100), IMM(T_VOID))" nl
+			  "CONTINUE:" nl
+			  "ADD (IND(0), IMM(1000));" nl
+			  "MOV (IND(100), IMM(T_VOID));" nl
 			  "#define SOB_VOID 100" nl
-			  "MOV (IND(101), IMM(T_NIL))" nl
+			  "MOV (IND(101), IMM(T_NIL));" nl
 			  "#define SOB_NIL 101" nl
-			  "MOV (IND(102), IMM(T_BOOL))" nl
-			  "MOV (IND(103), IMM(0))" nl
+			  "MOV (IND(102), IMM(T_BOOL));" nl
+			  "MOV (IND(103), IMM(0));" nl
 			  "#define SOB_FALSE 102" nl
-			  "MOV (IND(104), IMM(T_BOOL))" nl
-			  "MOV (IND(105), IMM(1))" nl
+			  "MOV (IND(104), IMM(T_BOOL));" nl
+			  "MOV (IND(105), IMM(1));" nl
 			  "#define SOB_TRUE 104" nl
 
 
@@ -592,13 +593,7 @@
 (define epilog
 	(lambda ()
 		(string-append
-			"CMP(R0, SOB_NIL);" nl
-  			"JUMP_EQ(Exit)" nl
-  			"PUSH(R0);" nl
-  			"CALL(WRITE_SOB);" nl
-  			"DROP(1);" nl
-  			"Exit:" nl
-  			"SHOW(\"\\exist with\", R0);" nl
+  			"SHOW(\"exit with \", R0);" nl
 			 "STOP_MACHINE;" nl
   			"return 0;" nl
 			"}" nl
@@ -650,8 +645,8 @@
 			((eq? e "void") "MOV(R0, IMM(SOB_VOID))")
 			((boolean? e)
 				(if (eq? e #t)
-					"MOV(R0, IMM(SOB_TRUE)) "
-					"MOV(R0, IMM(SOB_FALSE)) "
+					(string-append "MOV(R0, IMM(SOB_TRUE))" nl)
+					(string-append "MOV(R0, IMM(SOB_FALSE))" nl)
 				)
 			)
 			((string? e) )
