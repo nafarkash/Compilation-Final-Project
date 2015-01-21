@@ -22,7 +22,6 @@
 (define with (lambda (s f) (apply f s)))
 
 
-asdasd
 
 (define *reserved-words*
   '(and begin cond define do else if lambda
