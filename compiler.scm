@@ -347,31 +347,31 @@
 (define pred-or? (lambda (e) (eq? (car e) 'or)))
 
 (define if-test (lambda (e) (cadr e)))
-(define if-dit (lambda (e) (cADDr e)))
-(define if-dif (lambda (e) (cADDdr e)))
+(define if-dit (lambda (e) (caddr e)))
+(define if-dif (lambda (e) (cadddr e)))
 (define seq-body (lambda (e) (cadr e)))
 (define or-body (lambda (e) (cadr e)))
 (define applic-proc (lambda (e) (cadr e)))
-(define applic-args (lambda (e) (cADDr e)))
+(define applic-args (lambda (e) (caddr e)))
 (define define-param (lambda (e) (cadr e)))
-(define define-body (lambda (e) (cADDr e)))
+(define define-body (lambda (e) (caddr e)))
 (define lambda-args (lambda (e) (cadr e)))
-(define lambda-body (lambda (e) (cADDr e)))
+(define lambda-body (lambda (e) (caddr e)))
 
-(define fIND-pos 
+(define find-pos 
 	(lambda (lst elem pos)
 		(cond ((null? lst) #f)
 			((eq? (car lst) elem) pos)
-			(else (fIND-pos (cdr lst) elem (ADD1 pos)))
+			(else (find-pos (cdr lst) elem (add1 pos)))
 		)	
 	)
 )
 
-(define fIND-in-bvar
+(define find-in-bvar
 	(lambda (env elem pos)
 		(cond ((null? env) #f)
-			((fIND-pos (car env) elem 0) (list pos (fIND-pos (car env) elem 0)))
-			(else (fIND-in-bvar (cdr env) elem (ADD1 pos)))
+			((find-pos (car env) elem 0) (list pos (find-pos (car env) elem 0)))
+			(else (find-in-bvar (cdr env) elem (add1 pos)))
 		)
 	)
 )
@@ -379,10 +379,10 @@
 (define var-handler
 	(lambda (pe params env)
 		(let* ((var (cadr pe))
-				(position (fIND-pos params var 0)))
+				(position (find-pos params var 0)))
 			(if position 
 				`(pvar ,var ,position)
-				(let ((bvar-position (fIND-in-bvar env var -1)))
+				(let ((bvar-position (find-in-bvar env var -1)))
 					(if bvar-position
 						`(bvar ,var ,@bvar-position)
 						`(fvar ,var)
@@ -405,9 +405,9 @@
 				`(lambda-variadic ,(lambda-args pe) 
 					,(parse-lex (lambda-body pe) (list (lambda-args pe)) (cons (list (lambda-args pe)) env))))
 			((pred-lambda-opt? pe)
-				(let ((args (append (cadr pe) (list (cADDr pe))))
-					(body (cADDdr pe)))
-				`(lambda-opt ,(cadr pe) ,(cADDr pe) ,(parse-lex body args (cons args env)))
+				(let ((args (append (cadr pe) (list (caddr pe))))
+					(body (cadddr pe)))
+				`(lambda-opt ,(cadr pe) ,(caddr pe) ,(parse-lex body args (cons args env)))
 				))
 			((ormap (lambda (e) (eq? (car pe) e)) '(if3 seq define or applic tc-applic))
 				(cons (car pe) (parse-lex (cdr pe) params env)))
@@ -436,7 +436,7 @@
 			((pred-seq? tree)
 				(let* ((body (seq-body tree))
 					(size (length body))
-					(new-body (cons 
+					(new-body (append
 							(map (lambda (pe) (ATP pe #f)) (take body (- size 1)))
 							(list (ATP (car (list-tail body (- size 1))) tp?)))
 				))
@@ -444,7 +444,7 @@
 			((pred-or? tree)
 				(let* ((body (or-body tree))
 					(size (length body))
-					(new-body (cons 
+					(new-body (append 
 							(map (lambda (pe) (ATP pe #f)) (take body (- size 1)))
 							(list (ATP (car (list-tail body (- size 1))) tp?)))
 				))
@@ -453,8 +453,8 @@
 			((pred-lambda-variadic? tree) `(lambda-variadic ,(lambda-args tree) ,(ATP (lambda-body tree) #t)))
 			((pred-lambda-opt? tree)
 				(let ((args (cadr tree))
-					(extra-arg (cADDr tree))
-					(body (cADDdr tree)))
+					(extra-arg (caddr tree))
+					(body (cadddr tree)))
 				`(lambda-opt ,args ,extra-arg ,(ATP body #t))))
 
 			((pred-define? tree) `(define ,(define-param tree) ,(ATP (define-body tree) tp?)))
@@ -501,25 +501,6 @@
 (define ^label-if3else (^^label "Lif3else"))
 (define ^label-if3exit (^^label "Lif3exit"))
 (define nl (list->string (list #\newline)))
-(define code-gen-if3
-  (lambda (e)
-    (with e
-     (lambda (if3 test do-if-true do-if-false)
-       (let ((code-test (code-gen test))
-             (code-dit (code-gen do-if-true))
-             (code-dif (code-gen do-if-false))
-             (label-else (^label-if3else))
-             (label-exit (^label-if3exit)))
-		 (string-append
-			code-test nl ; when run, the result of the test will be in R0
-	        "CMP(R0, SOB_BOOLEAN_FALSE);" nl
-	        "JUMP_EQ(" label-else ");" nl
-			code-dit nl
-	        "JUMP(" label-exit ");" nl
-	        label-else ":" nl
-	        code-dif nl
-	        label-exit ":"))))))
-
 
 (define file->sexpr
 	(lambda (filename)
@@ -541,9 +522,9 @@
 )
 
 
-(define writeFile
-  (lambda(str)
-    (let  ((p (open-output-file "prog.c")))
+(define write2File
+  (lambda (str output)
+    (let  ((p (open-output-file output)))
       (display str p)
       (close-output-port p)
     )))
@@ -612,7 +593,7 @@
 						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))))) text))
 						(epilog)
 					)))
-		(writeFile parsed))
+		(write2File parsed output))
 		
 			
 	)
@@ -622,31 +603,67 @@
 (define code-gen
 	(lambda (e)
 		(cond
-			((pred-if? e) code-gen-if3)
-			((pred-define? e) code-gen-define)
-			((pred-lambda-simple? e) code-gen-lambda-simple)
-			((pred-lambda-opt? e) code-gen-lambda-opt)
-			((pred-lambda-variadic? e) code-gen-lambda-variadic)
-			((pred-seq? e) code-gen-seq)
-			((pred-or? e) code-gen-or)
+			((pred-if? e) (code-gen-if3 e))
+			((pred-define? e) (code-gen-define e))
+			((pred-lambda-simple? e) (code-gen-lambda-simple e))
+			((pred-lambda-opt? e) (code-gen-lambda-opt e))
+			((pred-lambda-variadic? e) (code-gen-lambda-variadic e))
+			((pred-seq? e) (code-gen-seq e))
+			((pred-or? e) (code-gen-or e))
 			((pred-const? e) (code-gen-const (cadr e)))
-			((pred-applic? e) code-gen-applic)
-			((pred-tc-applic? e) code-gen-tc-applic)
+			((pred-applic? e) (code-gen-applic e))
+			((pred-tc-applic? e) (code-gen-tc-applic e))
 			(else (error 'code-gen
                     (format "I can't recognize this: ~s" e)))
 		)
 	)
 )
 
+(define code-gen-seq
+	(lambda (e)
+		(with e
+			(lambda (seq seq-body)
+				(let ((seq-code (apply string-append (map code-gen seq-body))))
+					(string-append 
+						;"//begin expr: " (list->string e) nl
+						seq-code
+						;"//end expr: " (list->string e) nl 
+					)	
+				)
+				
+			)
+		)
+	)
+)
+
+(define code-gen-if3
+  (lambda (e)
+    (with e
+     (lambda (if3 test do-if-true do-if-false)
+       (let ((code-test (code-gen test))
+             (code-dit (code-gen do-if-true))
+             (code-dif (code-gen do-if-false))
+             (label-else (^label-if3else))
+             (label-exit (^label-if3exit)))
+		 (string-append
+			code-test nl ; when run, the result of the test will be in R0
+	        "CMP(R0, SOB_FALSE);" nl
+	        "JUMP_EQ(" label-else ");" nl
+			code-dit nl
+	        "JUMP(" label-exit ");" nl
+	        label-else ":" nl
+	        code-dif nl
+	        label-exit ":" nl))))))
+
 (define code-gen-const
 	(lambda (e)
 		(cond 
-			((null? e) "MOV(R0, IMM(SOB_NIL))")
-			((eq? e "void") "MOV(R0, IMM(SOB_VOID))")
+			((null? e) (string-append "MOV(R0, IMM(SOB_NIL));" nl))
+			((eq? e "void") (string-append "MOV(R0, IMM(SOB_VOID));" nl))
 			((boolean? e)
 				(if (eq? e #t)
-					(string-append "MOV(R0, IMM(SOB_TRUE))" nl)
-					(string-append "MOV(R0, IMM(SOB_FALSE))" nl)
+					(string-append "MOV(R0, IMM(SOB_TRUE));" nl)
+					(string-append "MOV(R0, IMM(SOB_FALSE));" nl)
 				)
 			)
 			((string? e) )

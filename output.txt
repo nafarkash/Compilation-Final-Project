@@ -25,9 +25,14 @@ MOV (IND(103), IMM(0));
 MOV (IND(104), IMM(T_BOOL));
 MOV (IND(105), IMM(1));
 #define SOB_TRUE 104
-MOV(R0, IMM(SOB_TRUE))
-MOV(R0, IMM(SOB_FALSE))
-SHOW("exit with ", R0);
+MOV(R0, IMM(SOB_TRUE));
+CMP(R0, SOB_BOOLEAN_FALSE);
+JUMP_EQ(Lif3else1);
+MOV(R0, IMM(SOB_FALSE));
+JUMP(Lif3exit1);
+Lif3else1:
+MOV(R0, IMM(SOB_TRUE));
+Lif3exit1:SHOW("exit with ", R0);
 STOP_MACHINE;
 return 0;
 }
