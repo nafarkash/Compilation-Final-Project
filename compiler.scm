@@ -500,7 +500,9 @@
           (number->string n))))))
 (define ^label-if3else (^^label "Lif3else"))
 (define ^label-if3exit (^^label "Lif3exit"))
+(define ^label-orExit (^^label "LorExit"))
 (define nl (list->string (list #\newline)))
+(define tab (list->string (list #\tab)))
 
 (define file->sexpr
 	(lambda (filename)
@@ -563,6 +565,7 @@
 			  "MOV (IND(104), IMM(T_BOOL));" nl
 			  "MOV (IND(105), IMM(1));" nl
 			  "#define SOB_TRUE 104" nl
+			  nl "/* begin of generated code */ " nl nl nl
 
 
 
@@ -625,12 +628,45 @@
 			(lambda (seq seq-body)
 				(let ((seq-code (apply string-append (map code-gen seq-body))))
 					(string-append 
-						;"//begin expr: " (list->string e) nl
+						"//begin expr: " (format "~a" e) nl
 						seq-code
-						;"//end expr: " (list->string e) nl 
+						"//end expr: " (format "~a" e) nl 
 					)	
+				)	
+			)
+		)
+	)
+)
+
+(define code-gen-or
+	(lambda (e)
+		(with e
+			(lambda (or or-body)
+				(letrec ((label-exit (^label-orExit))
+					(or-code
+						(lambda (lst)
+							(if (null? lst)
+								(string-append 
+									tab "MOV(R0,IMM(SOB_FALSE))" nl
+									tab label-exit ":" nl
+								)
+								(string-append
+									tab (code-gen (car lst)) nl ; when run, the result of the test will be in R0
+									tab "CMP(R0,SOB_FALSE);" nl
+									tab "JUMP_NE(" label-exit ");" nl
+									nl
+									(or-code (cdr lst))
+								)
+							)
+						)
+					))
+				  (string-append
+				  	"//begin expr: " (format "~a" e) nl
+				  	(or-code or-body)
+				  	"//end expr: " (format "~a" e) nl 
+				  )
+				  
 				)
-				
 			)
 		)
 	)

@@ -1,1 +1,2 @@
-(begin #t #f #t)
+(begin #t #f #f)
+(or #t #t #t)
