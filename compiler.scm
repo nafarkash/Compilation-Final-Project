@@ -526,6 +526,7 @@
 
 (define write2File
   (lambda (str output)
+  	(if (file-exists? output) (delete-file output))
     (let  ((p (open-output-file output)))
       (display str p)
       (close-output-port p)
@@ -622,11 +623,36 @@
 	)
 )
 
+
+;; indentation handler
+(define tab-stitcher
+	(lambda (str)
+		(letrec ((tab-pusher
+			(lambda (str-from str-new)
+				(let ((str-length (string-length str-from)))
+					(if (equal? str-from "")
+						str-new
+						(if (and (> str-length 1) (equal? (substring str-from 0 1) "\n"))
+							(tab-pusher (substring str-from 1 str-length) (string-append str-new "\n\t"))
+							(tab-pusher (substring str-from 1 str-length) (string-append str-new (substring str-from 0 1)))
+						)
+					))
+			)
+		))
+		(if (and (> (string-length str) 6) (equal? (substring str 0 7) "//begin"))
+			(string-append tab (tab-pusher str ""))
+			(string-append str)
+		))
+	)
+)
+
 (define code-gen-seq
 	(lambda (e)
 		(with e
 			(lambda (seq seq-body)
-				(let ((seq-code (apply string-append (map code-gen seq-body))))
+				(let ((seq-code (apply string-append (map
+														tab-stitcher
+														(map code-gen seq-body)))))
 					(string-append 
 						"//begin expr: " (format "~a" e) nl
 						seq-code
@@ -647,13 +673,13 @@
 						(lambda (lst)
 							(if (null? lst)
 								(string-append 
-									tab "MOV(R0,IMM(SOB_FALSE))" nl
-									tab label-exit ":" nl
+									"MOV(R0,IMM(SOB_FALSE))" nl
+									label-exit ":" nl
 								)
 								(string-append
-									tab (code-gen (car lst)) nl ; when run, the result of the test will be in R0
-									tab "CMP(R0,SOB_FALSE);" nl
-									tab "JUMP_NE(" label-exit ");" nl
+									(tab-stitcher (code-gen (car lst))) nl ; when run, the result of the test will be in R0
+									"CMP(R0,SOB_FALSE);" nl
+									"JUMP_NE(" label-exit ");" nl
 									nl
 									(or-code (cdr lst))
 								)
@@ -676,12 +702,13 @@
   (lambda (e)
     (with e
      (lambda (if3 test do-if-true do-if-false)
-       (let ((code-test (code-gen test))
-             (code-dit (code-gen do-if-true))
-             (code-dif (code-gen do-if-false))
+       (let ((code-test (tab-stitcher (code-gen test)))
+             (code-dit (tab-stitcher (code-gen do-if-true)))
+             (code-dif (tab-stitcher (code-gen do-if-false)))
              (label-else (^label-if3else))
              (label-exit (^label-if3exit)))
 		 (string-append
+		 	"//begin expr: " (format "~a" e) nl
 			code-test nl ; when run, the result of the test will be in R0
 	        "CMP(R0, SOB_FALSE);" nl
 	        "JUMP_EQ(" label-else ");" nl
@@ -689,13 +716,15 @@
 	        "JUMP(" label-exit ");" nl
 	        label-else ":" nl
 	        code-dif nl
-	        label-exit ":" nl))))))
+	        label-exit ":" nl
+	        "//end expr: " (format "~a" e) nl 
+	    ))))))
 
 (define code-gen-const
 	(lambda (e)
 		(cond 
 			((null? e) (string-append "MOV(R0, IMM(SOB_NIL));" nl))
-			((eq? e "void") (string-append "MOV(R0, IMM(SOB_VOID));" nl))
+			((equal? e *void-object*) (string-append "MOV(R0, IMM(SOB_VOID));" nl))
 			((boolean? e)
 				(if (eq? e #t)
 					(string-append "MOV(R0, IMM(SOB_TRUE));" nl)
