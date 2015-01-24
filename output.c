@@ -46,10 +46,6 @@ MOV (IND(105), IMM(1));
 	
 	MOV(R0, IMM(SOB_FALSE));
 	
-	CMP(R0,SOB_FALSE);
-	JUMP_NE(LorExit1);
-	
-	MOV(R0,IMM(SOB_FALSE))
 	LorExit1:
 	//end expr: (or ((seq ((const #t) (const #f))) (const #t) (const #f)))
 

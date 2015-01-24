@@ -501,6 +501,8 @@
 (define ^label-if3else (^^label "Lif3else"))
 (define ^label-if3exit (^^label "Lif3exit"))
 (define ^label-orExit (^^label "LorExit"))
+(define ^label-simpleCont (^^label "LsimCont"))
+(define ^label-simpleExit (^^label "LsimExit"))
 (define nl (list->string (list #\newline)))
 (define tab (list->string (list #\tab)))
 
@@ -594,7 +596,7 @@
 		(let* ((text (file->sexpr input))
 			(parsed (string-append 
 						(prolog)
-						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))))) text))
+						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))) '() '())) text))
 						(epilog)
 					)))
 		(write2File parsed output))
@@ -605,18 +607,18 @@
 
 
 (define code-gen
-	(lambda (e)
+	(lambda (e params env)
 		(cond
-			((pred-if? e) (code-gen-if3 e))
-			((pred-define? e) (code-gen-define e))
-			((pred-lambda-simple? e) (code-gen-lambda-simple e))
-			((pred-lambda-opt? e) (code-gen-lambda-opt e))
-			((pred-lambda-variadic? e) (code-gen-lambda-variadic e))
-			((pred-seq? e) (code-gen-seq e))
-			((pred-or? e) (code-gen-or e))
-			((pred-const? e) (code-gen-const (cadr e)))
-			((pred-applic? e) (code-gen-applic e))
-			((pred-tc-applic? e) (code-gen-tc-applic e))
+			((pred-if? e) (code-gen-if3 e params env))
+			((pred-define? e) (code-gen-define e params env))
+			((pred-lambda-simple? e) (code-gen-lambda-simple e params env))
+			((pred-lambda-opt? e) (code-gen-lambda-opt e params env))
+			((pred-lambda-variadic? e) (code-gen-lambda-variadic e params env))
+			((pred-seq? e) (code-gen-seq e params env))
+			((pred-or? e) (code-gen-or e params env))
+			((pred-const? e) (code-gen-const e params env))
+			((pred-applic? e) (code-gen-applic e params env))
+			((pred-tc-applic? e) (code-gen-tc-applic e params env))
 			(else (error 'code-gen
                     (format "I can't recognize this: ~s" e)))
 		)
@@ -646,13 +648,71 @@
 	)
 )
 
+;;;;;;;;;;;;; need to be completed. Not precise ;;;;;;;;;;;;;;;;;;;;
+;; TODO: change from C code to CISC, change the lambda-params & lambda-env, change lines 667-678
+(define code-gen-lambda-simple
+	(lambda (e lambda-params lambda-env)
+		(with e
+			(lambda (lambda-simple params body)
+				(let ((label-cont (^label-simpleCont))
+					(label-exit (^label-simpleExit))
+				)
+					(string-append
+						"//begin expr: " (format "~a" e) nl
+						"//env: " (fromat "~a" lambda-env) "    params: " (fromat "~a" params) nl
+						"PUSH(" lambda-env "+ 1)" nl
+						"(CALL(MALLOC))" nl
+						"MOV(R1,IND(R0))" nl
+						"MOV(R2, FPARG(0)) //env" nl 
+						"for (i=0,j=1; i < " (length env) "; ++i, ++j)" nl
+						"{" nl
+						tab "MOV(INDD(R1,j), INDD(R2,i))" nl
+						"}" nl
+						"PUSH(" (length params) ")" nl
+						"(CALL(MALLOC))" nl
+						"MOV(R3,IND(R0))" nl
+						"for (i=0; i < " (length params) "; ++i)" nl
+						"{" nl
+						tab "MOV(INDD(R3,i), FPARG(2+i))" nl
+						"}" nl
+						"MOV(INDD(R1,0), R3) //now R1 holds the environment" nl
+
+	 					"PUSH(IMM(3))" nl
+						"(CALL(MALLOC))" nl
+						"MOV(INDD(R0,0), MAKE_SOB_CLOSURE)" nl
+						"MOV(INDD(R0,1), R1)" nl
+						"MOV(INDD(R0,2), " label-cont ")" nl
+						"JUMP(" label-exit ")" nl
+						label-cont ":" nl
+						"PUSH(FP)" nl
+						"(MOV(FP,SP))" nl
+
+						; code-gen the body
+						"//body code-gen" nl
+						(tab-stitcher (code-gen body lambda-params lambda-args))
+
+
+						"POP(FP)" nl
+						label-exit nl
+						nl
+
+
+						"//end expr: " (format "~a" e) nl 
+					)
+				)
+					
+			)
+		)
+	)
+)
+
 (define code-gen-seq
-	(lambda (e)
+	(lambda (e params env)
 		(with e
 			(lambda (seq seq-body)
 				(let ((seq-code (apply string-append (map
 														tab-stitcher
-														(map code-gen seq-body)))))
+														(map (lambda (x) (code-gen x params env)) seq-body)))))
 					(string-append 
 						"//begin expr: " (format "~a" e) nl
 						seq-code
@@ -665,19 +725,24 @@
 )
 
 (define code-gen-or
-	(lambda (e)
+	(lambda (e params env)
 		(with e
 			(lambda (or or-body)
-				(letrec ((label-exit (^label-orExit))
+				(letrec* (
+					(label-exit (^label-orExit))
+					(w (reverse or-body))
+					(last (car w))
+					(rest (reverse (cdr w)))
 					(or-code
 						(lambda (lst)
 							(if (null? lst)
-								(string-append 
-									"MOV(R0,IMM(SOB_FALSE))" nl
+								(string-append
+									(tab-stitcher (code-gen last params env)) nl
 									label-exit ":" nl
 								)
+
 								(string-append
-									(tab-stitcher (code-gen (car lst))) nl ; when run, the result of the test will be in R0
+									(tab-stitcher (code-gen (car lst) params env)) nl ; when run, the result of the test will be in R0
 									"CMP(R0,SOB_FALSE);" nl
 									"JUMP_NE(" label-exit ");" nl
 									nl
@@ -688,7 +753,7 @@
 					))
 				  (string-append
 				  	"//begin expr: " (format "~a" e) nl
-				  	(or-code or-body)
+				  	(or-code rest)
 				  	"//end expr: " (format "~a" e) nl 
 				  )
 				  
@@ -699,12 +764,12 @@
 )
 
 (define code-gen-if3
-  (lambda (e)
+  (lambda (e params env)
     (with e
      (lambda (if3 test do-if-true do-if-false)
-       (let ((code-test (tab-stitcher (code-gen test)))
-             (code-dit (tab-stitcher (code-gen do-if-true)))
-             (code-dif (tab-stitcher (code-gen do-if-false)))
+       (let ((code-test (tab-stitcher (code-gen test params env)))
+             (code-dit (tab-stitcher (code-gen do-if-true params env)))
+             (code-dif (tab-stitcher (code-gen do-if-false params env)))
              (label-else (^label-if3else))
              (label-exit (^label-if3exit)))
 		 (string-append
@@ -721,22 +786,25 @@
 	    ))))))
 
 (define code-gen-const
-	(lambda (e)
-		(cond 
-			((null? e) (string-append "MOV(R0, IMM(SOB_NIL));" nl))
-			((equal? e *void-object*) (string-append "MOV(R0, IMM(SOB_VOID));" nl))
-			((boolean? e)
-				(if (eq? e #t)
-					(string-append "MOV(R0, IMM(SOB_TRUE));" nl)
-					(string-append "MOV(R0, IMM(SOB_FALSE));" nl)
+	(lambda (e params env)
+		(let ((expr (cadr e)))
+			(cond 
+				((null? expr) (string-append "MOV(R0, IMM(SOB_NIL));" nl))
+				((equal? expr *void-object*) (string-append "MOV(R0, IMM(SOB_VOID));" nl))
+				((boolean? expr)
+					(if (eq? expr #t)
+						(string-append "MOV(R0, IMM(SOB_TRUE));" nl)
+						(string-append "MOV(R0, IMM(SOB_FALSE));" nl)
+					)
 				)
+				((string? expr) )
+				((number? expr) )
+				((char? expr) )
+				(else (error 'code-gen-const
+					(format "I can't recognize this: ~s" expr)))
 			)
-			((string? e) )
-			((number? e) )
-			((char? e) )
-			(else (error 'code-gen-const
-				(format "I can't recognize this: ~s" e)))
 		)
+		
 	)
 )
 
