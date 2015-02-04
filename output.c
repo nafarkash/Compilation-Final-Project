@@ -29,36 +29,57 @@ MOV (IND(105), IMM(1));
 /* begin of generated code */ 
 
 
-//begin expr: (if3 (or ((seq ((const #t) (const #f))) (const #t) (const #f))) (const #t) (const #f))
-	//begin expr: (or ((seq ((const #t) (const #f))) (const #t) (const #f)))
-		//begin expr: (seq ((const #t) (const #f)))
-		MOV(R0, IMM(SOB_TRUE));
-		MOV(R0, IMM(SOB_FALSE));
-		//end expr: (seq ((const #t) (const #f)))
-	
-	CMP(R0,SOB_FALSE);
-	JUMP_NE(LorExit1);
-	
-	MOV(R0, IMM(SOB_TRUE));
-	
-	CMP(R0,SOB_FALSE);
-	JUMP_NE(LorExit1);
-	
-	MOV(R0, IMM(SOB_FALSE));
-	
-	LorExit1:
-	//end expr: (or ((seq ((const #t) (const #f))) (const #t) (const #f)))
-
-CMP(R0, SOB_FALSE);
-JUMP_EQ(Lif3else1);
+//begin expr: (lambda-simple () (const #t))
+//env-size: 0    params-size: 0
+PUSH(IMM(1))
+(CALL(MALLOC))
+MOV(R1,IND(R0))
+MOV(R2, FPARG(0)) //env
+MOV(R4, IMM(0))
+CMP(R4, IMM(0))
+JUMP_EQ(LsimForEnd2)
+MOV(R5, IMM(0))
+MOV(R6, IMM(1))
+LsimForBegin2:
+	MOV(INDD(R1,R6), INDD(R2,R5))
+	DECR(R4)
+	INCR(R5)
+	INCR(R6)
+	CMP(R4, IMM(0))
+	JUMP_EQ(LsimForBegin2)
+LsimForEnd2:
+PUSH(IMM(0))
+(CALL(MALLOC))
+MOV(R3,IND(R0))
+MOV(R4, IMM(0))
+CMP(R4, IMM(0))
+JUMP_EQ(LsimForEnd1)
+MOV(R5, IMM(0))
+LsimForBegin1:
+MOV(R6,R5)
+ADD(R6, IMM(2))
+	MOV(INDD(R3,R5), FPARG(R6))
+	DECR(R4)
+	INCR(R5)
+	CMP(R4, IMM(0))
+	JUMP_EQ(LsimForBegin1)
+LsimForEnd1:
+MOV(INDD(R1,0), R3) //now R1 holds the environment
+PUSH(IMM(3))
+(CALL(MALLOC))
+MOV(INDD(R0,0), MAKE_SOB_CLOSURE)
+MOV(INDD(R0,1), R1)
+MOV(INDD(R0,2), LsimCont1)
+JUMP(LsimExit1)
+LsimCont1:
+PUSH(FP)
+(MOV(FP,SP))
+//body code-gen
 MOV(R0, IMM(SOB_TRUE));
+POP(FP)
+LsimExit1
 
-JUMP(Lif3exit1);
-Lif3else1:
-MOV(R0, IMM(SOB_FALSE));
-
-Lif3exit1:
-//end expr: (if3 (or ((seq ((const #t) (const #f))) (const #t) (const #f))) (const #t) (const #f))
+//end expr: (lambda-simple () (const #t))
 SHOW("exit with ", R0);
 STOP_MACHINE;
 return 0;

@@ -503,6 +503,8 @@
 (define ^label-orExit (^^label "LorExit"))
 (define ^label-simpleCont (^^label "LsimCont"))
 (define ^label-simpleExit (^^label "LsimExit"))
+(define ^label-simpleForBegin (^^label "LsimForBegin"))
+(define ^label-simpleForEnd (^^label "LsimForEnd"))
 (define nl (list->string (list #\newline)))
 (define tab (list->string (list #\tab)))
 
@@ -596,7 +598,7 @@
 		(let* ((text (file->sexpr input))
 			(parsed (string-append 
 						(prolog)
-						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))) '() '())) text))
+						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0)) text))
 						(epilog)
 					)))
 		(write2File parsed output))
@@ -649,34 +651,73 @@
 )
 
 ;;;;;;;;;;;;; need to be completed. Not precise ;;;;;;;;;;;;;;;;;;;;
-;; TODO: change from C code to CISC, change the lambda-params & lambda-env, change lines 667-678
+;; TODO: change from C code to CISC, change the lambda-params & lambda-env
+;;Questions: how does the stack looks like, when lambda-params & lambda-env changes
 (define code-gen-lambda-simple
 	(lambda (e lambda-params lambda-env)
 		(with e
 			(lambda (lambda-simple params body)
 				(let ((label-cont (^label-simpleCont))
 					(label-exit (^label-simpleExit))
+					(label-firstBegin (^label-simpleForBegin))
+					(label-secondBegin (^label-simpleForBegin))
+					(label-firstEnd (^label-simpleForEnd))
+					(label-secondEnd (^label-simpleForEnd))
 				)
 					(string-append
 						"//begin expr: " (format "~a" e) nl
-						"//env: " (fromat "~a" lambda-env) "    params: " (fromat "~a" params) nl
-						"PUSH(" lambda-env "+ 1)" nl
+						"//env-size: " (format "~a" lambda-env) "    params-size: " (format "~a" lambda-params) nl
+						"PUSH(IMM(" (number->string (+ lambda-env 1)) "))" nl
 						"(CALL(MALLOC))" nl
+						;;;; R1 will hold new increased size env
+						;;;; R2 holds old env
 						"MOV(R1,IND(R0))" nl
 						"MOV(R2, FPARG(0)) //env" nl 
-						"for (i=0,j=1; i < " (length env) "; ++i, ++j)" nl
-						"{" nl
-						tab "MOV(INDD(R1,j), INDD(R2,i))" nl
-						"}" nl
-						"PUSH(" (length params) ")" nl
+						;;;; R1 holds the old env, while first place is preserved for new params
+						"MOV(R4, IMM(" (number->string lambda-env) "))" nl
+						"CMP(R4, IMM(0))" nl
+						"JUMP_EQ(" label-firstEnd ")" nl
+						"MOV(R5, IMM(0))" nl
+						"MOV(R6, IMM(1))" nl
+						label-firstBegin ":" nl
+						tab "MOV(INDD(R1,R6), INDD(R2,R5))" nl
+						tab "DECR(R4)" nl
+						tab "INCR(R5)" nl
+						tab "INCR(R6)" nl
+						tab "CMP(R4, IMM(0))" nl
+						tab "JUMP_EQ(" label-firstBegin ")" nl
+						label-firstEnd ":" nl
+
+						;"for (i=0,j=1; i < " (number->string lambda-env) "; ++i, ++j)" nl
+						;"{" nl
+						;tab "MOV(INDD(R1,j), INDD(R2,i))" nl
+						;"}" nl
+
+						;;;;;;;; handling with params ;;;;;;;;;
+						"PUSH(IMM(" (number->string lambda-params) "))" nl
 						"(CALL(MALLOC))" nl
 						"MOV(R3,IND(R0))" nl
-						"for (i=0; i < " (length params) "; ++i)" nl
-						"{" nl
-						tab "MOV(INDD(R3,i), FPARG(2+i))" nl
-						"}" nl
-						"MOV(INDD(R1,0), R3) //now R1 holds the environment" nl
 
+						"MOV(R4, IMM(" (number->string lambda-env) "))" nl
+						"CMP(R4, IMM(0))" nl
+						"JUMP_EQ(" label-secondEnd ")" nl
+						"MOV(R5, IMM(0))" nl
+						label-secondBegin ":" nl
+						tab "MOV(R6,R5)" nl
+						tab "ADD(R6, IMM(2))" nl
+						tab "MOV(INDD(R3,R5), FPARG(R6))" nl
+						tab "DECR(R4)" nl
+						tab "INCR(R5)" nl
+						tab "CMP(R4, IMM(0))" nl
+						tab "JUMP_EQ(" label-secondBegin ")" nl
+						label-secondEnd ":" nl
+
+						;"for (i=0; i < " (number->string lambda-params) "; ++i)" nl
+						;"{" nl
+						;tab "MOV(INDD(R3,i), FPARG(2+i))" nl
+						;"}" nl
+						"MOV(INDD(R1,0), R3) //now R1 holds the environment" nl
+						;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	 					"PUSH(IMM(3))" nl
 						"(CALL(MALLOC))" nl
 						"MOV(INDD(R0,0), MAKE_SOB_CLOSURE)" nl
@@ -689,7 +730,7 @@
 
 						; code-gen the body
 						"//body code-gen" nl
-						(tab-stitcher (code-gen body lambda-params lambda-args))
+						(tab-stitcher (code-gen body lambda-params (+ 1 lambda-env)))
 
 
 						"POP(FP)" nl
@@ -705,6 +746,9 @@
 		)
 	)
 )
+
+
+
 
 (define code-gen-seq
 	(lambda (e params env)
