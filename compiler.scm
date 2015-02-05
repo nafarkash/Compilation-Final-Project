@@ -505,6 +505,8 @@
 (define ^label-simpleExit (^^label "LsimExit"))
 (define ^label-simpleForBegin (^^label "LsimForBegin"))
 (define ^label-simpleForEnd (^^label "LsimForEnd"))
+(define ^label-notProc (^^label "LnotProcedure"))
+(define ^label-applicExit (^^label "LprocExit"))
 (define nl (list->string (list #\newline)))
 (define tab (list->string (list #\tab)))
 
@@ -650,11 +652,8 @@
 	)
 )
 
-;;;;;;;;;;;;; need to be completed. Not precise ;;;;;;;;;;;;;;;;;;;;
-;; TODO: change from C code to CISC, change the lambda-params & lambda-env
-;;Questions: how does the stack looks like, when lambda-params & lambda-env changes
 (define code-gen-lambda-simple
-	(lambda (e lambda-params lambda-env)
+	(lambda (e params-size env-size)
 		(with e
 			(lambda (lambda-simple params body)
 				(let ((label-cont (^label-simpleCont))
@@ -666,75 +665,67 @@
 				)
 					(string-append
 						"//begin expr: " (format "~a" e) nl
-						"//env-size: " (format "~a" lambda-env) "    params-size: " (format "~a" lambda-params) nl
-						"PUSH(IMM(" (number->string (+ lambda-env 1)) "))" nl
-						"(CALL(MALLOC))" nl
-						;;;; R1 will hold new increased size env
-						;;;; R2 holds old env
-						"MOV(R1,IND(R0))" nl
-						"MOV(R2, FPARG(0)) //env" nl 
-						;;;; R1 holds the old env, while first place is preserved for new params
-						"MOV(R4, IMM(" (number->string lambda-env) "))" nl
-						"CMP(R4, IMM(0))" nl
-						"JUMP_EQ(" label-firstEnd ")" nl
-						"MOV(R5, IMM(0))" nl
-						"MOV(R6, IMM(1))" nl
+						"//env-size: " (format "~a" env-size) "    params-size: " (format "~a" params-size) nl
+
+						"PUSH(IMM(" (number->string (+ env-size 1)) ")); //new env size: " (number->string (+ env-size 1))  nl
+						"CALL(MALLOC);" nl
+						"DROP(1);" nl
+						"// R1 will hold new increased size env " nl
+						"MOV(R1,R0);" nl
+						"MOV(R4, IMM(" (number->string env-size) "));" nl
+						"CMP(R4, IMM(0));" nl
+						"JUMP_EQ(" label-firstEnd "); " nl
+						"MOV(R2, FPARG(0)); //env" nl
+						"MOV(R5, IMM(0));" nl
+						"MOV(R6, IMM(1));" nl
 						label-firstBegin ":" nl
-						tab "MOV(INDD(R1,R6), INDD(R2,R5))" nl
-						tab "DECR(R4)" nl
-						tab "INCR(R5)" nl
-						tab "INCR(R6)" nl
-						tab "CMP(R4, IMM(0))" nl
-						tab "JUMP_EQ(" label-firstBegin ")" nl
+						tab "MOV(INDD(R1,R6), INDD(R2,R5));" nl
+						tab "DECR(R4);" nl
+						tab "INCR(R5);" nl
+						tab "INCR(R6);" nl
+						tab "CMP(R4, IMM(0));" nl
+						tab "JUMP_NE(" label-firstBegin ");" nl
 						label-firstEnd ":" nl
 
-						;"for (i=0,j=1; i < " (number->string lambda-env) "; ++i, ++j)" nl
-						;"{" nl
-						;tab "MOV(INDD(R1,j), INDD(R2,i))" nl
-						;"}" nl
-
-						;;;;;;;; handling with params ;;;;;;;;;
-						"PUSH(IMM(" (number->string lambda-params) "))" nl
-						"(CALL(MALLOC))" nl
-						"MOV(R3,IND(R0))" nl
-
-						"MOV(R4, IMM(" (number->string lambda-env) "))" nl
-						"CMP(R4, IMM(0))" nl
-						"JUMP_EQ(" label-secondEnd ")" nl
-						"MOV(R5, IMM(0))" nl
+						"// handling with params " nl
+						"MOV(R4, IMM(" (number->string params-size) "));" nl
+						"CMP(R4, IMM(0));" nl
+						"JUMP_EQ(" label-secondEnd "); " nl
+						"PUSH(IMM(" (number->string params-size) "));" nl
+						"CALL(MALLOC);" nl
+						"DROP(1);" nl
+						"MOV(R3,R0);" nl
+						"MOV(R5, IMM(0));" nl
 						label-secondBegin ":" nl
-						tab "MOV(R6,R5)" nl
-						tab "ADD(R6, IMM(2))" nl
-						tab "MOV(INDD(R3,R5), FPARG(R6))" nl
-						tab "DECR(R4)" nl
-						tab "INCR(R5)" nl
-						tab "CMP(R4, IMM(0))" nl
-						tab "JUMP_EQ(" label-secondBegin ")" nl
+						tab "MOV(R6,R5);" nl
+						tab "ADD(R6, IMM(2));" nl
+						tab "MOV(INDD(R3,R5), FPARG(R6));" nl
+						tab "DECR(R4);" nl
+						tab "INCR(R5);" nl
+						tab "CMP(R4, IMM(0));" nl
+						tab "JUMP_NE(" label-secondBegin ");" nl
 						label-secondEnd ":" nl
 
-						;"for (i=0; i < " (number->string lambda-params) "; ++i)" nl
-						;"{" nl
-						;tab "MOV(INDD(R3,i), FPARG(2+i))" nl
-						;"}" nl
-						"MOV(INDD(R1,0), R3) //now R1 holds the environment" nl
-						;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	 					"PUSH(IMM(3))" nl
-						"(CALL(MALLOC))" nl
-						"MOV(INDD(R0,0), MAKE_SOB_CLOSURE)" nl
-						"MOV(INDD(R0,1), R1)" nl
-						"MOV(INDD(R0,2), " label-cont ")" nl
-						"JUMP(" label-exit ")" nl
+						"MOV(INDD(R1,0), R3); //now R1 holds the environment" nl
+						"// done handling with params " nl nl
+	 					
+						"// build the closure" nl
+						"PUSH(LABEL(" label-cont "));" nl
+						"PUSH(R1);" nl
+						"CALL(MAKE_SOB_CLOSURE);" nl
+						"DROP(IMM(2));" nl
+						"JUMP(" label-exit ");" nl
 						label-cont ":" nl
-						"PUSH(FP)" nl
-						"(MOV(FP,SP))" nl
+						"PUSH(FP);" nl
+						"MOV(FP,SP);" nl
 
 						; code-gen the body
 						"//body code-gen" nl
-						(tab-stitcher (code-gen body lambda-params (+ 1 lambda-env)))
-
-
-						"POP(FP)" nl
-						label-exit nl
+						(tab-stitcher (code-gen body (length params) (+ 1 env-size)))
+						"//end body code-gen" nl
+						"POP(FP);" nl
+						"RETURN;" nl
+						label-exit ":" nl
 						nl
 
 
@@ -747,7 +738,46 @@
 	)
 )
 
+(define code-gen-applic
+	(lambda (e params-size env-size)
+		(with e
+			(lambda (applic proc args)
+				(let* ((arguments (reverse args))
+					(label-notProc (^label-notProc))
+					(label-exit (^label-applicExit))
+					(applic-code (apply string-append (map
+														tab-stitcher
+														(map 
+															(lambda (x) (string-append 
+																			(code-gen x params-size env-size)
+																		 	"PUSH(R0);" nl))
+															arguments))))
+				) 
+					(string-append 
+						"//begin expr: " (format "~a" e) nl
+						applic-code
+						"PUSH(IMM(" (number->string (length arguments)) ")); //pushing args size to stack" nl
+						"// done pushing args, now handling proc" nl
+						(tab-stitcher (code-gen proc params-size env-size))
+						"CMP(INDD(R0,IMM(0)) , T_CLOSURE);" nl
+						"JUMP_NE(" label-notProc ");" nl
+						"PUSH(INDD(R0,1));  // env" nl
+						"CALLA(INDD(R0,2));  //code" nl
+						"MOV(R1, STARG(0));"
+						"ADD(R1, IMM(2));"
+						"DROP (R1);" nl
+						"JUMP(" label-exit ");" nl
+						label-notProc ":" nl
+						"SHOW(\"Exception: attempt to apply non-procedure \", R0);" nl
+						label-exit ":" nl
+						"//end expr: " (format "~a" e) nl 
+					)
 
+				)
+			)
+		)
+	)
+)
 
 
 (define code-gen-seq
