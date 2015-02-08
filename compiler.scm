@@ -507,6 +507,7 @@
 (define ^label-simpleForEnd (^^label "LsimForEnd"))
 (define ^label-notProc (^^label "LnotProcedure"))
 (define ^label-applicExit (^^label "LprocExit"))
+(define ^label-applicOverride (^^label "LprocOverride"))
 (define nl (list->string (list #\newline)))
 (define tab (list->string (list #\tab)))
 
@@ -763,8 +764,8 @@
 						"JUMP_NE(" label-notProc ");" nl
 						"PUSH(INDD(R0,1));  // env" nl
 						"CALLA(INDD(R0,2));  //code" nl
-						"MOV(R1, STARG(0));"
-						"ADD(R1, IMM(2));"
+						"MOV(R1, STARG(0));" nl
+						"ADD(R1, IMM(2));"nl
 						"DROP (R1);" nl
 						"JUMP(" label-exit ");" nl
 						label-notProc ":" nl
@@ -779,6 +780,63 @@
 	)
 )
 
+(define code-gen-tc-applic
+	(lambda (e params-size env-size)
+		(with e
+			(lambda (tc-applic proc args)
+				(let* ((arguments (reverse args))
+					(label-notProc (^label-notProc))
+					(label-override (^label-applicOverride))
+					(applic-code (apply string-append (map
+														tab-stitcher
+														(map 
+															(lambda (x) (string-append 
+																			(code-gen x params-size env-size)
+																		 	"PUSH(R0);" nl))
+															arguments))))
+				) 
+					(string-append 
+						"//begin expr: " (format "~a" e) nl
+						applic-code
+						"PUSH(IMM(" (number->string (length arguments)) ")); //pushing args size to stack" nl
+						"// done pushing args, now handling proc" nl
+						(tab-stitcher (code-gen proc params-size env-size))
+						"CMP(INDD(R0,IMM(0)) , T_CLOSURE);" nl
+						"JUMP_NE(" label-notProc ");" nl
+						"PUSH(INDD(R0,1));  // env" nl
+						"PUSH(FPARG(-1)); // return address from current frame" nl
+						"MOV(R1,FPARG(-2)); // save FP" nl
+						"//start overriding old frame" nl
+						"MOV(R2, IMM(" (number->string (+ (length arguments) 3)) ")); //R1 holds loop size" nl
+						"MOV(R3, FPARG(1)); //number of old arguments" nl
+						"ADD(R3,IMM(1)); //R3 points to first old param from FPARG point of view" nl
+						"MOV(R4, STARG(1)); //number of new arguments" nl
+						"ADD(R4, IMM(1)); //R4 points to first new param from STARG point of view" nl
+						label-override ":" nl
+						"MOV(R5, STARG(R4));"
+						"MOV(FPARG(R3),R5); //overriding" nl
+						"SUB(R2,1);" nl
+						"SUB(R3,1); //next old param" nl
+						"SUB(R4,1); //next new param" nl
+						"CMP(R2, IMM(0));" nl
+						"JUMP_NE(" label-override ");" nl
+						"//end overriding" nl
+						;; we can determine the DROP value at compile time
+						"//complete the override by dropping unnecessary items from stack" nl
+						"DROP(IMM(" (number->string (+ params-size 4)) "));" nl
+						"MOV(FP,R1); //Restore old FP in preparation of JUMP" nl
+						"JUMPA(INDD(R0,2));  //code" nl
+	
+						label-notProc ":" nl
+						"SHOW(\"Exception: attempt to apply non-procedure \", R0);" nl
+						"//end expr: " (format "~a" e) nl 
+					)
+
+				)
+			)
+		)
+	)
+)
 
 (define code-gen-seq
 	(lambda (e params env)
