@@ -1,1 +1,1 @@
-((lambda (x y w z) ((lambda (z) #t) #f)) #t #t #t #t)
+((lambda (a b c . d) #t) #t #t #t)

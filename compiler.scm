@@ -501,10 +501,14 @@
 (define ^label-if3else (^^label "Lif3else"))
 (define ^label-if3exit (^^label "Lif3exit"))
 (define ^label-orExit (^^label "LorExit"))
-(define ^label-simpleCont (^^label "LsimCont"))
-(define ^label-simpleExit (^^label "LsimExit"))
-(define ^label-simpleForBegin (^^label "LsimForBegin"))
-(define ^label-simpleForEnd (^^label "LsimForEnd"))
+(define ^label-lambdaCont (^^label "LlambdaCont"))
+(define ^label-lambdaExit (^^label "LlambdaExit"))
+(define ^label-lambdaEnvBegin (^^label "L_lambda_env_Begin"))
+(define ^label-lambdaEnvEnd (^^label "L_lambda_env_End"))
+(define ^label-lambdaArgsBegin (^^label "L_lambda_args_Begin"))
+(define ^label-lambdaArgsEnd (^^label "L_lambda_args_End"))
+(define ^label-lambdaCorrectionBegin (^^label "L_lambda_correction_begin"))
+(define ^label-lambdaCorrectionEnd (^^label "L_lambda_correction_end"))
 (define ^label-notProc (^^label "LnotProcedure"))
 (define ^label-applicExit (^^label "LprocExit"))
 (define ^label-applicOverride (^^label "LprocOverride"))
@@ -657,12 +661,12 @@
 	(lambda (e params-size env-size)
 		(with e
 			(lambda (lambda-simple params body)
-				(let ((label-cont (^label-simpleCont))
-					(label-exit (^label-simpleExit))
-					(label-firstBegin (^label-simpleForBegin))
-					(label-secondBegin (^label-simpleForBegin))
-					(label-firstEnd (^label-simpleForEnd))
-					(label-secondEnd (^label-simpleForEnd))
+				(let ((label-cont (^label-lambdaCont))
+					(label-exit (^label-lambdaExit))
+					(label-EnvBegin (^label-lambdaEnvBegin))
+					(label-ArgsBegin (^label-lambdaArgsBegin))
+					(label-EnvEnd (^label-lambdaEnvEnd))
+					(label-ArgsEnd (^label-lambdaArgsEnd))
 				)
 					(string-append
 						"//begin expr: " (format "~a" e) nl
@@ -675,37 +679,37 @@
 						"MOV(R1,R0);" nl
 						"MOV(R4, IMM(" (number->string env-size) "));" nl
 						"CMP(R4, IMM(0));" nl
-						"JUMP_EQ(" label-firstEnd "); " nl
+						"JUMP_EQ(" label-EnvEnd "); " nl
 						"MOV(R2, FPARG(0)); //env" nl
 						"MOV(R5, IMM(0));" nl
 						"MOV(R6, IMM(1));" nl
-						label-firstBegin ":" nl
+						label-EnvBegin ":" nl
 						tab "MOV(INDD(R1,R6), INDD(R2,R5));" nl
 						tab "DECR(R4);" nl
 						tab "INCR(R5);" nl
 						tab "INCR(R6);" nl
 						tab "CMP(R4, IMM(0));" nl
-						tab "JUMP_NE(" label-firstBegin ");" nl
-						label-firstEnd ":" nl
+						tab "JUMP_NE(" label-EnvBegin ");" nl
+						label-EnvEnd ":" nl
 
 						"// handling with params " nl
 						"MOV(R4, IMM(" (number->string params-size) "));" nl
 						"CMP(R4, IMM(0));" nl
-						"JUMP_EQ(" label-secondEnd "); " nl
+						"JUMP_EQ(" label-ArgsEnd "); " nl
 						"PUSH(IMM(" (number->string params-size) "));" nl
 						"CALL(MALLOC);" nl
 						"DROP(1);" nl
 						"MOV(R3,R0);" nl
 						"MOV(R5, IMM(0));" nl
-						label-secondBegin ":" nl
+						label-ArgsBegin ":" nl
 						tab "MOV(R6,R5);" nl
 						tab "ADD(R6, IMM(2));" nl
 						tab "MOV(INDD(R3,R5), FPARG(R6));" nl
 						tab "DECR(R4);" nl
 						tab "INCR(R5);" nl
 						tab "CMP(R4, IMM(0));" nl
-						tab "JUMP_NE(" label-secondBegin ");" nl
-						label-secondEnd ":" nl
+						tab "JUMP_NE(" label-ArgsBegin ");" nl
+						label-ArgsEnd ":" nl
 
 						"MOV(INDD(R1,0), R3); //now R1 holds the environment" nl
 						"// done handling with params " nl nl
@@ -716,6 +720,7 @@
 						"CALL(MAKE_SOB_CLOSURE);" nl
 						"DROP(IMM(2));" nl
 						"JUMP(" label-exit ");" nl
+						;; Body of the lambda, will be referenced only on application
 						label-cont ":" nl
 						"PUSH(FP);" nl
 						"MOV(FP,SP);" nl
@@ -723,6 +728,119 @@
 						; code-gen the body
 						"//body code-gen" nl
 						(tab-stitcher (code-gen body (length params) (+ 1 env-size)))
+						"//end body code-gen" nl
+						"POP(FP);" nl
+						"RETURN;" nl
+						label-exit ":" nl
+						nl
+
+
+						"//end expr: " (format "~a" e) nl 
+					)
+				)
+					
+			)
+		)
+	)
+)
+
+(define code-gen-lambda-opt
+	(lambda (e params-size env-size)
+		(with e
+			(lambda (lambda-opt params rest body)
+				(let ((label-cont (^label-lambdaCont))
+					(label-exit (^label-lambdaExit))
+					(label-EnvBegin (^label-lambdaEnvBegin))
+					(label-ArgsBegin (^label-lambdaArgsBegin))
+					(label-EnvEnd (^label-lambdaEnvEnd))
+					(label-ArgsEnd (^label-lambdaArgsEnd))
+					(label-correctionBegin (^label-lambdaCorrectionBegin))
+					(label-correctionEnd (^label-lambdaCorrectionEnd))
+				)
+					(string-append
+						"//begin expr: " (format "~a" e) nl
+						"//env-size: " (format "~a" env-size) "    params-size: " (format "~a" params-size) nl
+
+						"PUSH(IMM(" (number->string (+ env-size 1)) ")); //new env size: " (number->string (+ env-size 1))  nl
+						"CALL(MALLOC);" nl
+						"DROP(1);" nl
+						"// R1 will hold new increased size env " nl
+						"MOV(R1,R0);" nl
+						"MOV(R4, IMM(" (number->string env-size) "));" nl
+						"CMP(R4, IMM(0));" nl
+						"JUMP_EQ(" label-EnvEnd "); " nl
+						"MOV(R2, FPARG(0)); //env" nl
+						"MOV(R5, IMM(0));" nl
+						"MOV(R6, IMM(1));" nl
+						label-EnvBegin ":" nl
+						tab "MOV(INDD(R1,R6), INDD(R2,R5));" nl
+						tab "DECR(R4);" nl
+						tab "INCR(R5);" nl
+						tab "INCR(R6);" nl
+						tab "CMP(R4, IMM(0));" nl
+						tab "JUMP_NE(" label-EnvBegin ");" nl
+						label-EnvEnd ":" nl
+
+						"// handling with params " nl
+						"MOV(R4, IMM(" (number->string params-size) "));" nl
+						"CMP(R4, IMM(0));" nl
+						"JUMP_EQ(" label-ArgsEnd "); " nl
+						"PUSH(IMM(" (number->string params-size) "));" nl
+						"CALL(MALLOC);" nl
+						"DROP(1);" nl
+						"MOV(R3,R0);" nl
+						"MOV(R5, IMM(0));" nl
+						label-ArgsBegin ":" nl
+						tab "MOV(R6,R5);" nl
+						tab "ADD(R6, IMM(2));" nl
+						tab "MOV(INDD(R3,R5), FPARG(R6));" nl
+						tab "DECR(R4);" nl
+						tab "INCR(R5);" nl
+						tab "CMP(R4, IMM(0));" nl
+						tab "JUMP_NE(" label-ArgsBegin ");" nl
+						label-ArgsEnd ":" nl
+
+						"MOV(INDD(R1,0), R3); //now R1 holds the environment" nl
+						"// done handling with params " nl nl
+	 					
+						"// build the closure" nl
+						"PUSH(LABEL(" label-cont "));" nl
+						"PUSH(R1);" nl
+						"CALL(MAKE_SOB_CLOSURE);" nl
+						"DROP(IMM(2));" nl
+						"JUMP(" label-exit ");" nl
+						;; Body of the lambda, will be referenced only on application
+						label-cont ":" nl
+						"PUSH(FP);" nl
+						"MOV(FP,SP);" nl
+
+						"//stack correction code" nl
+						"//R1 will hold loop size" nl
+						"MOV(R1, FPARG(1)); //num of arguments on stack" nl
+						"//decrement from R1 the number of params" nl
+						"SUB(R1, IMM(" (number->string (length params)) ")); //sub from R1 param size" nl
+						"SUB(R1, IMM(1)); //exclude MAGIC BOX" nl
+						"MOV(R0, IMM(SOB_NIL)); //end of list" nl
+						"CMP(R1, IMM(0));" nl
+						"JUMP_EQ(" label-correctionEnd ");" nl
+						"//R2 will hold first arg for the list, which is the lowest arg on stack" nl
+						"MOV(R2, FPARG(1)); //num of arguments on stack" nl
+						label-correctionBegin ":" nl
+						tab "PUSH(R0); //second pair arg" nl
+						tab "PUSH(FPARG(R2)); //first pair arg" nl
+						tab "CALL(MAKE_SOB_PAIR);" nl
+						tab "DROP(2);" nl
+						tab "DECR(R2); //next arg" nl
+						tab "DECR(R1); //next iteration" nl
+						tab "CMP(R1, IMM(0));" nl
+						tab "JUMP_NE(" label-correctionBegin ");" nl
+						label-correctionEnd ":" nl
+						"//done making the list. put it in the right position (known at compile time)" nl
+						"MOV(FPARG(" (number->string (+ 2 (length params))) "), R0);" nl
+						"//end correction" nl
+						; code-gen the body
+						"//body code-gen" nl
+						(tab-stitcher (code-gen body (+ 1 (length params)) (+ 1 env-size)))
 						"//end body code-gen" nl
 						"POP(FP);" nl
 						"RETURN;" nl
@@ -756,8 +874,9 @@
 				) 
 					(string-append 
 						"//begin expr: " (format "~a" e) nl
+						"PUSH(IMM(SOB_NIL)); //MAGIC BOX" nl
 						applic-code
-						"PUSH(IMM(" (number->string (length arguments)) ")); //pushing args size to stack" nl
+						"PUSH(IMM(" (number->string (+ 1 (length arguments))) ")); //pushing args size to stack +1 for magic box" nl
 						"// done pushing args, now handling proc" nl
 						(tab-stitcher (code-gen proc params-size env-size))
 						"CMP(INDD(R0,IMM(0)) , T_CLOSURE);" nl
@@ -797,8 +916,9 @@
 				) 
 					(string-append 
 						"//begin expr: " (format "~a" e) nl
+						"PUSH(IMM(SOB_NIL)); //MAGIC BOX" nl
 						applic-code
-						"PUSH(IMM(" (number->string (length arguments)) ")); //pushing args size to stack" nl
+						"PUSH(IMM(" (number->string (+ 1 (length arguments))) ")); //pushing args size to stack +1 for magic box" nl
 						"// done pushing args, now handling proc" nl
 						(tab-stitcher (code-gen proc params-size env-size))
 						"CMP(INDD(R0,IMM(0)) , T_CLOSURE);" nl
@@ -807,23 +927,23 @@
 						"PUSH(FPARG(-1)); // return address from current frame" nl
 						"MOV(R1,FPARG(-2)); // save FP" nl
 						"//start overriding old frame" nl
-						"MOV(R2, IMM(" (number->string (+ (length arguments) 3)) ")); //R1 holds loop size" nl
+						"MOV(R2, IMM(" (number->string (+ (length arguments) 4)) ")); //R2 holds loop size" nl
 						"MOV(R3, FPARG(1)); //number of old arguments" nl
 						"ADD(R3,IMM(1)); //R3 points to first old param from FPARG point of view" nl
 						"MOV(R4, STARG(1)); //number of new arguments" nl
 						"ADD(R4, IMM(1)); //R4 points to first new param from STARG point of view" nl
 						label-override ":" nl
-						"MOV(R5, STARG(R4));"
-						"MOV(FPARG(R3),R5); //overriding" nl
-						"SUB(R2,1);" nl
-						"SUB(R3,1); //next old param" nl
-						"SUB(R4,1); //next new param" nl
-						"CMP(R2, IMM(0));" nl
-						"JUMP_NE(" label-override ");" nl
+						tab "MOV(R5, STARG(R4));"
+						tab "MOV(FPARG(R3),R5); //overriding" nl
+						tab "SUB(R2,1);" nl
+						tab "SUB(R3,1); //next old param" nl
+						tab "SUB(R4,1); //next new param" nl
+						tab "CMP(R2, IMM(0));" nl
+						tab "JUMP_NE(" label-override ");" nl
 						"//end overriding" nl
 						;; we can determine the DROP value at compile time
 						"//complete the override by dropping unnecessary items from stack" nl
-						"DROP(IMM(" (number->string (+ params-size 4)) "));" nl
+						"DROP(IMM(" (number->string (+ params-size 5)) "));" nl
 						"MOV(FP,R1); //Restore old FP in preparation of JUMP" nl
 						"JUMPA(INDD(R0,2));  //code" nl
 	
