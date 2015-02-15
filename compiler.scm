@@ -91,7 +91,21 @@
 			  "#include \"arch/string.lib\"" nl
 			  "#include \"arch/system.lib\"" nl
 			  "#include \"arch/scheme.lib\"" nl
-			  "CONTINUE:" nl
+			  "CONTINUE:" nl nl
+			  (prim_procedure?)
+			  (prim_null?)
+			  (prim_pair?)
+			  (prim_number?)
+			  (prim_integer?)
+			  (prim_char?)
+			  (prim_boolean?)
+			  (prim_symbol?)
+			  (prim_string?)
+			  (prim_vector?)
+			  (prim_zero?)
+			  (prim_car)
+			  (prim_cdr) 
+			  nl
 			  "ADD (IND(0), IMM(1000));" nl
 			  "MOV (IND(100), IMM(T_VOID));" nl
 			  "#define SOB_VOID 100" nl
@@ -103,7 +117,7 @@
 			  "MOV (IND(104), IMM(T_BOOL));" nl
 			  "MOV (IND(105), IMM(1));" nl
 			  "#define SOB_TRUE 104" nl
-			  nl "/* begin of generated code */ " nl nl nl
+			  "/* begin of generated code */ " nl nl nl
 
 
 
@@ -737,352 +751,369 @@
 
 ;;;;;;;;;;;;;;;; procedure implementation ;;;;;;;;;;;;;;;;;;
 
-;;;;CHECK: not sure. Are there any other procedures which are not closure based? ;;;;
-(define ^label-procedure?-true (^^label "L_procedure?_True"))
-(define ^label-procedure?-exit (^^label "L_procedure?_Exit"))
-(define procedure?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-procedure?-true))
-			(label-exit (^label-procedure?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_CLOSURE);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_procedure?
+	(lambda ()
+		(string-append
+			"JUMP(L_procedure?_cont);" nl
+			"L_prim_procedure?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_CLOSURE);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_procedure?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_procedure?_Exit);" nl
+			tab "L_procedure?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_procedure?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_procedure?_cont:" nl
+			tab "MOV(IND(2), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(3), IMM(451794));" nl
+			tab "MOV(IND(4), LABEL(L_prim_procedure?));" nl
+			"#define SOB_PRIM_PROCEDURE? 2" nl
 		)
 	)
 )
 
-(define ^label-null?-true (^^label "L_null?_True"))
-(define ^label-null?-exit (^^label "L_null?_Exit"))
-(define null?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-null?-true))
-			(label-exit (^label-null?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_NIL);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_null?
+	(lambda ()
+		(string-append
+			"JUMP(L_null?_cont);" nl
+			"L_prim_null?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_NIL);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_null?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_null?_Exit);" nl
+			tab "L_null?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_null?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_null?_cont:" nl
+			tab "MOV(IND(5), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(6), IMM(544512));" nl
+			tab "MOV(IND(7), LABEL(L_prim_null?));" nl
+			"#define SOB_PRIM_NULL? 5" nl
 		)
 	)
 )
 
-(define ^label-pair?-true (^^label "L_pair?_True"))
-(define ^label-pair?-exit (^^label "L_pair?_Exit"))
-(define pair?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-pair?-true))
-			(label-exit (^label-pair?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_PAIR);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_pair?
+	(lambda ()
+		(string-append
+			"JUMP(L_pair?_cont);" nl
+			"L_prim_pair?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_PAIR);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_pair?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_pair?_Exit);" nl
+			tab "L_pair?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_pair?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_pair?_cont:" nl
+			tab "MOV(IND(8), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(9), IMM(183403));" nl
+			tab "MOV(IND(10), LABEL(L_prim_pair?));" nl
+			"#define SOB_PRIM_PAIR? 8" nl
 		)
 	)
 )
 
-(define ^label-number?-true (^^label "L_number?_True"))
-(define ^label-number?-exit (^^label "L_number?_Exit"))
-(define number?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-number?-true))
-			(label-exit (^label-number?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_INTEGER);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
-		)
-	)
-)
-(define integer?_Implement
-	(lambda (e) (number?_Implement e)))
-
-(define ^label-char?-true (^^label "L_char?_True"))
-(define ^label-char?-exit (^^label "L_char?_Exit"))
-(define char?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-char?-true))
-			(label-exit (^label-char?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_CHAR);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_number?
+	(lambda ()
+		(string-append
+			"JUMP(L_number?_cont);" nl
+			"L_prim_number?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_number?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_number?_Exit);" nl
+			tab "L_number?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_number?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_number?_cont:" nl
+			tab "MOV(IND(11), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(12), IMM(101555));" nl
+			tab "MOV(IND(13), LABEL(L_prim_number?));" nl
+			"#define SOB_PRIM_NUMBER? 11" nl
 		)
 	)
 )
 
-(define ^label-boolean?-true (^^label "L_boolean?_True"))
-(define ^label-boolean?-exit (^^label "L_boolean?_Exit"))
-(define boolean?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-boolean?-true))
-			(label-exit (^label-boolean?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_BOOL);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_integer?
+	(lambda ()
+		(string-append
+			"JUMP(L_integer?_cont);" nl
+			"L_prim_integer?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_integer?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_integer?_Exit);" nl
+			tab "L_integer?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_integer?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_integer?_cont:" nl
+			tab "MOV(IND(14), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(15), IMM(957412));" nl
+			tab "MOV(IND(16), LABEL(L_prim_integer?));" nl
+			"#define SOB_PRIM_INTEGER? 14" nl
 		)
 	)
 )
 
-(define ^label-symbol?-true (^^label "L_symbol?_True"))
-(define ^label-symbol?-exit (^^label "L_symbol?_Exit"))
-(define symbol?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-symbol?-true))
-			(label-exit (^label-symbol?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_SYMBOL);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_char?
+	(lambda ()
+		(string-append
+			"JUMP(L_char?_cont);" nl
+			"L_prim_char?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_CHAR);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_char?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_char?_Exit);" nl
+			tab "L_char?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_char?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_char?_cont:" nl
+			tab "MOV(IND(17), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(18), IMM(645713));" nl
+			tab "MOV(IND(19), LABEL(L_prim_char?));" nl
+			"#define SOB_PRIM_CHAR? 17" nl
 		)
 	)
 )
 
-(define ^label-string?-true (^^label "L_string?_True"))
-(define ^label-string?-exit (^^label "L_string?_Exit"))
-(define string?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-string?-true))
-			(label-exit (^label-string?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_STRING);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_boolean?
+	(lambda ()
+		(string-append
+			"JUMP(L_boolean?_cont);" nl
+			"L_prim_boolean?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_BOOL);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_boolean?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_boolean?_Exit);" nl
+			tab "L_boolean?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_boolean?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_boolean?_cont:" nl
+			tab "MOV(IND(20), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(21), IMM(110463));" nl
+			tab "MOV(IND(22), LABEL(L_prim_boolean?));" nl
+			"#define SOB_PRIM_BOOLEAN? 20" nl
 		)
 	)
 )
 
-(define ^label-vector?-true (^^label "L_vector?_True"))
-(define ^label-vector?-exit (^^label "L_vector?_Exit"))
-(define vector?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-vector?-true))
-			(label-exit (^label-vector?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_VECTOR);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_symbol?
+	(lambda ()
+		(string-append
+			"JUMP(L_symbol?_cont);" nl
+			"L_prim_symbol?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_SYMBOL);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_symbol?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_symbol?_Exit);" nl
+			tab "L_symbol?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_symbol?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_symbol?_cont:" nl
+			tab "MOV(IND(23), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(24), IMM(358902));" nl
+			tab "MOV(IND(25), LABEL(L_prim_symbol?));" nl
+			"#define SOB_PRIM_SYMBOL? 23" nl
 		)
 	)
 )
 
-(define ^label-zero?-true (^^label "L_zero?_True"))
-(define ^label-zero?-exit (^^label "L_zero?_Exit"))
-(define zero?_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-true (^label-zero?-true))
-			(label-exit (^label-zero?-exit))
-			)
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"PUSH(R0);" nl
-				"CALL(IS_ZERO);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(1));" nl
-				"JUMP_EQ(" label-true ");" nl
-				"MOV(R0, SOB_FALSE);" nl
-				"JUMP(" label-exit ");" nl
-				label-true ":" nl
-				"MOV(R0, SOB_TRUE);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-
-			)
+(define prim_string?
+	(lambda ()
+		(string-append
+			"JUMP(L_string?_cont);" nl
+			"L_prim_string?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_STRING);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_string?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_string?_Exit);" nl
+			tab "L_string?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_string?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_string?_cont:" nl
+			tab "MOV(IND(26), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(27), IMM(511179));" nl
+			tab "MOV(IND(28), LABEL(L_prim_string?));" nl
+			"#define SOB_PRIM_STRING? 26" nl
 		)
 	)
 )
 
-(define ^label-car-error (^^label "L_car_ERROR"))
-(define ^label-car-exit (^^label "L_car_Exit"))
-(define car_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-error (^label-car-error))
-			(label-exit (^label-car-exit)))
-
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"MOV(R1,R0); //save the result" nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_PAIR);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(0));"
-				"JUMP_EQ(" label-error ");"
-				"MOV(R0, INDD(R1,1));" nl
-				"JUMP(" label-exit ");" nl
-				label-error ":" nl
-				"SHOW(\"Exception in car, This is not a pair: \", R0);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-			)
+(define prim_vector?
+	(lambda ()
+		(string-append
+			"JUMP(L_vector?_cont);" nl
+			"L_prim_vector?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_VECTOR);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_vector?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_vector?_Exit);" nl
+			tab "L_vector?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_vector?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_vector?_cont:" nl
+			tab "MOV(IND(29), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(30), IMM(615181));" nl
+			tab "MOV(IND(31), LABEL(L_prim_vector?));" nl
+			"#define SOB_PRIM_VECTOR? 29" nl
 		)
 	)
 )
 
-(define ^label-cdr-error (^^label "L_cdr_ERROR"))
-(define ^label-cdr-exit (^^label "L_cdr_Exit"))
-(define cdr_Implement
-	(lambda (e)
-		(let ((expr (code-gen e))
-			(label-error (^label-cdr-error))
-			(label-exit (^label-cdr-exit)))
-
-			(string-append
-				(format "//begin expr: ~a" e) nl
-				expr nl
-				"MOV(R1,R0); //save the result" nl
-				"PUSH(R0);" nl
-				"CALL(IS_SOB_PAIR);" nl
-				"DROP(1);" nl
-				"CMP(R0, IMM(0));"
-				"JUMP_EQ(" label-error ");"
-				"MOV(R0, INDD(R1,2));" nl
-				"JUMP(" label-exit ");" nl
-				label-error ":" nl
-				"SHOW(\"Exception in cdr, This is not a pair: \", R0);" nl
-				label-exit ":" nl
-				(format "//end expr: ~a" e) nl
-			)
+(define prim_zero?
+	(lambda ()
+		(string-append
+			"JUMP(L_zero?_cont);" nl
+			"L_prim_zero?:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_ZERO);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_zero?_True);" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			tab "JUMP(L_zero?_Exit);" nl
+			tab "L_zero?_True:" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "L_zero?_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_zero?_cont:" nl
+			tab "MOV(IND(32), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(33), IMM(602995));" nl
+			tab "MOV(IND(34), LABEL(L_prim_zero?));" nl
+			"#define SOB_PRIM_ZERO? 32" nl
 		)
 	)
 )
 
+(define prim_car
+	(lambda ()
+		(string-append
+			"JUMP(L_car_cont);" nl
+			"L_prim_car:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_PAIR);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(0));" nl
+			tab "JUMP_EQ(L_car_ERROR);" nl
+			tab "MOV(R0, INDD(FPARG(2),1));" nl
+			tab "JUMP(L_car_Exit);" nl
+			tab "L_car_ERROR:" nl
+			tab "SHOW(\"Exception in car, This is not a pair: \", R0);" nl
+			tab "L_car_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_car_cont:" nl
+			tab "MOV(IND(35), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(36), IMM(921183));" nl
+			tab "MOV(IND(37), LABEL(L_prim_car));" nl
+			"#define SOB_PRIM_CAR 35" nl
+		)
+	)
+)
 
-
-
-
-
-
-
+(define prim_cdr
+	(lambda ()
+		(string-append
+			"JUMP(L_cdr_cont);" nl
+			"L_prim_cdr:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(2)); //param" nl
+			tab "CALL(IS_SOB_PAIR);" nl
+			tab "DROP(1);" nl
+			tab "CMP(R0, IMM(0));" nl
+			tab "JUMP_EQ(L_cdr_ERROR);" nl
+			tab "MOV(R0, INDD(FPARG(2),1));" nl
+			tab "JUMP(L_cdr_Exit);" nl
+			tab "L_cdr_ERROR:" nl
+			tab "SHOW(\"Exception in cdr, This is not a pair: \", R0);" nl
+			tab "L_cdr_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_cdr_cont:" nl
+			tab "MOV(IND(38), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(39), IMM(685967));" nl
+			tab "MOV(IND(40), LABEL(L_prim_cdr));" nl
+			"#define SOB_PRIM_CDR 38" nl
+		)
+	)
+)
 
 
 
