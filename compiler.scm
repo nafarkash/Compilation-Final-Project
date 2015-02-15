@@ -163,28 +163,30 @@
 	)
 )
 
-
-;; indentation handler
-(define tab-stitcher
-	(lambda (str)
-		(letrec ((tab-pusher
-			(lambda (str-from str-new)
-				(let ((str-length (string-length str-from)))
-					(if (equal? str-from "")
-						str-new
-						(if (and (> str-length 1) (equal? (substring str-from 0 1) "\n"))
-							(tab-pusher (substring str-from 1 str-length) (string-append str-new "\n\t"))
-							(tab-pusher (substring str-from 1 str-length) (string-append str-new (substring str-from 0 1)))
-						)
-					))
-			)
-		))
-		(if (and (> (string-length str) 6) (equal? (substring str 0 7) "//begin"))
-			(string-append tab (tab-pusher str ""))
-			(string-append str)
-		))
-	)
+(define tab-stitcher 
+	(lambda (str) str)
 )
+;; indentation handler
+;(define tab-stitcher
+;	(lambda (str)
+;		(letrec ((tab-pusher
+;			(lambda (str-from str-new)
+;				(let ((str-length (string-length str-from)))
+;					(if (equal? str-from "")
+;						str-new
+;						(if (and (> str-length 1) (equal? (substring str-from 0 1) "\n"))
+;							(tab-pusher (substring str-from 1 str-length) (string-append str-new "\n\t"))
+;							(tab-pusher (substring str-from 1 str-length) (string-append str-new (substring str-from 0 1)))
+;						)
+;					))
+;			)
+;		))
+;		(if (and (> (string-length str) 6) (equal? (substring str 0 7) "//begin"))
+;			(string-append tab (tab-pusher str ""))
+;			(string-append str)
+;		))
+;	)
+;)
 
 (define code-gen-lambda-simple
 	(lambda (e params-size env-size)
@@ -198,7 +200,7 @@
 					(label-ArgsEnd (^label-lambdaArgsEnd))
 				)
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						"//env-size: " (format "~a" env-size) "    params-size: " (format "~a" params-size) nl
 
 						"PUSH(IMM(" (number->string (+ env-size 1)) ")); //new env size: " (number->string (+ env-size 1))  nl
@@ -264,7 +266,7 @@
 						nl
 
 
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 				)
 
@@ -287,7 +289,7 @@
 					(label-correctionEnd (^label-lambdaCorrectionEnd))
 				)
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						"//env-size: " (format "~a" env-size) "    params-size: " (format "~a" params-size) nl
 
 						"PUSH(IMM(" (number->string (+ env-size 1)) ")); //new env size: " (number->string (+ env-size 1))  nl
@@ -377,7 +379,7 @@
 						nl
 
 
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 				)
 
@@ -400,7 +402,7 @@
 					(label-correctionEnd (^label-lambdaCorrectionEnd))
 				)
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						"//env-size: " (format "~a" env-size) "    params-size: " (format "~a" params-size) nl
 
 						"PUSH(IMM(" (number->string (+ env-size 1)) ")); //new env size: " (number->string (+ env-size 1))  nl
@@ -488,7 +490,7 @@
 						nl
 
 
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 				)
 
@@ -513,7 +515,7 @@
 															arguments))))
 				)
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						"PUSH(IMM(SOB_NIL)); //MAGIC BOX" nl
 						applic-code
 						"PUSH(IMM(" (number->string (+ 1 (length arguments))) ")); //pushing args size to stack +1 for magic box" nl
@@ -530,7 +532,7 @@
 						label-notProc ":" nl
 						"SHOW(\"Exception: attempt to apply non-procedure \", R0);" nl
 						label-exit ":" nl
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 
 				)
@@ -555,7 +557,7 @@
 															arguments))))
 				)
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						"PUSH(IMM(SOB_NIL)); //MAGIC BOX" nl
 						applic-code
 						"PUSH(IMM(" (number->string (+ 1 (length arguments))) ")); //pushing args size to stack +1 for magic box" nl
@@ -591,7 +593,7 @@
 
 						label-notProc ":" nl
 						"SHOW(\"Exception: attempt to apply non-procedure \", R0);" nl
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 
 				)
@@ -608,9 +610,9 @@
 														tab-stitcher
 														(map (lambda (x) (code-gen x params env)) seq-body)))))
 					(string-append
-						"//begin expr: " (format "~a" e) nl
+						(format "//begin expr: ~a" e) nl
 						seq-code
-						"//end expr: " (format "~a" e) nl
+						(format "//end expr: ~a" e) nl
 					)
 				)
 			)
@@ -646,9 +648,9 @@
 						)
 					))
 				  (string-append
-				  	"//begin expr: " (format "~a" e) nl
+				  	(format "//begin expr: ~a" e) nl
 				  	(or-code rest)
-				  	"//end expr: " (format "~a" e) nl
+				  	(format "//end expr: ~a" e) nl
 				  )
 
 				)
@@ -667,7 +669,7 @@
              (label-else (^label-if3else))
              (label-exit (^label-if3exit)))
 		 (string-append
-		 	"//begin expr: " (format "~a" e) nl
+		 	(format "//begin expr: ~a" e) nl
 			code-test nl ; when run, the result of the test will be in R0
 	        "CMP(R0, SOB_FALSE);" nl
 	        "JUMP_EQ(" label-else ");" nl
@@ -676,7 +678,7 @@
 	        label-else ":" nl
 	        code-dif nl
 	        label-exit ":" nl
-	        "//end expr: " (format "~a" e) nl
+	        (format "//end expr: ~a" e) nl
 	    ))))))
 
 (define code-gen-pvar
@@ -684,9 +686,9 @@
     (with e
       (lambda (pvar var pos)
         (string-append
-          "//begin expr: " (format "~a" e) nl
+          (format "//begin expr: ~a" e) nl
           "MOV(R0, FPARG(2 + " (number->string pos) "));" nl
-          "//end expr: " (format "~a" e) nl
+          (format "//end expr: ~a" e) nl
         )
       )
     )
@@ -698,11 +700,11 @@
     (with e
       (lambda (bvar var maj min)
         (string-append
-          "//begin expr: " (format "~a" e) nl
+          (format "//begin expr: ~a" e) nl
           "MOV(R0, FPARG(0));  //env" nl
           "MOV(R0, INDD(R0, IMM(" (number->string maj) "))); //major" nl
           "MOV(R0, INDD(R0, IMM(" (number->string min) "))); //value" nl
-          "//end expr: " (format "~a" e) nl
+          (format "//end expr: ~a" e) nl
         )
       )
     )
@@ -731,3 +733,357 @@
 
 	)
 )
+
+
+;;;;;;;;;;;;;;;; procedure implementation ;;;;;;;;;;;;;;;;;;
+
+;;;;CHECK: not sure. Are there any other procedures which are not closure based? ;;;;
+(define ^label-procedure?-true (^^label "L_procedure?_True"))
+(define ^label-procedure?-exit (^^label "L_procedure?_Exit"))
+(define procedure?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-procedure?-true))
+			(label-exit (^label-procedure?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_CLOSURE);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-null?-true (^^label "L_null?_True"))
+(define ^label-null?-exit (^^label "L_null?_Exit"))
+(define null?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-null?-true))
+			(label-exit (^label-null?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_NIL);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-pair?-true (^^label "L_pair?_True"))
+(define ^label-pair?-exit (^^label "L_pair?_Exit"))
+(define pair?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-pair?-true))
+			(label-exit (^label-pair?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_PAIR);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-number?-true (^^label "L_number?_True"))
+(define ^label-number?-exit (^^label "L_number?_Exit"))
+(define number?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-number?-true))
+			(label-exit (^label-number?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_INTEGER);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+(define integer?_Implement
+	(lambda (e) (number?_Implement e)))
+
+(define ^label-char?-true (^^label "L_char?_True"))
+(define ^label-char?-exit (^^label "L_char?_Exit"))
+(define char?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-char?-true))
+			(label-exit (^label-char?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_CHAR);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-boolean?-true (^^label "L_boolean?_True"))
+(define ^label-boolean?-exit (^^label "L_boolean?_Exit"))
+(define boolean?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-boolean?-true))
+			(label-exit (^label-boolean?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_BOOL);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-symbol?-true (^^label "L_symbol?_True"))
+(define ^label-symbol?-exit (^^label "L_symbol?_Exit"))
+(define symbol?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-symbol?-true))
+			(label-exit (^label-symbol?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_SYMBOL);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-string?-true (^^label "L_string?_True"))
+(define ^label-string?-exit (^^label "L_string?_Exit"))
+(define string?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-string?-true))
+			(label-exit (^label-string?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_STRING);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-vector?-true (^^label "L_vector?_True"))
+(define ^label-vector?-exit (^^label "L_vector?_Exit"))
+(define vector?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-vector?-true))
+			(label-exit (^label-vector?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_VECTOR);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-zero?-true (^^label "L_zero?_True"))
+(define ^label-zero?-exit (^^label "L_zero?_Exit"))
+(define zero?_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-true (^label-zero?-true))
+			(label-exit (^label-zero?-exit))
+			)
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"PUSH(R0);" nl
+				"CALL(IS_ZERO);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(1));" nl
+				"JUMP_EQ(" label-true ");" nl
+				"MOV(R0, SOB_FALSE);" nl
+				"JUMP(" label-exit ");" nl
+				label-true ":" nl
+				"MOV(R0, SOB_TRUE);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+
+			)
+		)
+	)
+)
+
+(define ^label-car-error (^^label "L_car_ERROR"))
+(define ^label-car-exit (^^label "L_car_Exit"))
+(define car_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-error (^label-car-error))
+			(label-exit (^label-car-exit)))
+
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"MOV(R1,R0); //save the result" nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_PAIR);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(0));"
+				"JUMP_EQ(" label-error ");"
+				"MOV(R0, INDD(R1,1));" nl
+				"JUMP(" label-exit ");" nl
+				label-error ":" nl
+				"SHOW(\"Exception in car, This is not a pair: \", R0);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+			)
+		)
+	)
+)
+
+(define ^label-cdr-error (^^label "L_cdr_ERROR"))
+(define ^label-cdr-exit (^^label "L_cdr_Exit"))
+(define cdr_Implement
+	(lambda (e)
+		(let ((expr (code-gen e))
+			(label-error (^label-cdr-error))
+			(label-exit (^label-cdr-exit)))
+
+			(string-append
+				(format "//begin expr: ~a" e) nl
+				expr nl
+				"MOV(R1,R0); //save the result" nl
+				"PUSH(R0);" nl
+				"CALL(IS_SOB_PAIR);" nl
+				"DROP(1);" nl
+				"CMP(R0, IMM(0));"
+				"JUMP_EQ(" label-error ");"
+				"MOV(R0, INDD(R1,2));" nl
+				"JUMP(" label-exit ");" nl
+				label-error ":" nl
+				"SHOW(\"Exception in cdr, This is not a pair: \", R0);" nl
+				label-exit ":" nl
+				(format "//end expr: ~a" e) nl
+			)
+		)
+	)
+)
+
+
+
+
+
+
+
+
+
+
+
+
