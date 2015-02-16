@@ -92,20 +92,6 @@
 			  "#include \"arch/system.lib\"" nl
 			  "#include \"arch/scheme.lib\"" nl
 			  "CONTINUE:" nl nl
-			  (prim_procedure?)
-			  (prim_null?)
-			  (prim_pair?)
-			  (prim_number?)
-			  (prim_integer?)
-			  (prim_char?)
-			  (prim_boolean?)
-			  (prim_symbol?)
-			  (prim_string?)
-			  (prim_vector?)
-			  (prim_zero?)
-			  (prim_car)
-			  (prim_cdr) 
-			  nl
 			  "ADD (IND(0), IMM(1000));" nl
 			  "MOV (IND(100), IMM(T_VOID));" nl
 			  "#define SOB_VOID 100" nl
@@ -116,7 +102,22 @@
 			  "#define SOB_FALSE 102" nl
 			  "MOV (IND(104), IMM(T_BOOL));" nl
 			  "MOV (IND(105), IMM(1));" nl
-			  "#define SOB_TRUE 104" nl
+			  "#define SOB_TRUE 104" nl nl
+			  (prim_procedure)
+			  (prim_null)
+			  (prim_pair)
+			  (prim_number)
+			  (prim_integer)
+			  (prim_char)
+			  (prim_boolean)
+			  (prim_symbol)
+			  (prim_string)
+			  (prim_vector)
+			  (prim_zero)
+			  (prim_car)
+			  (prim_cdr)
+			  (prim_cons)
+			  nl
 			  "/* begin of generated code */ " nl nl nl
 
 
@@ -168,9 +169,9 @@
 			((pred-const? e) (code-gen-const e params env))
 			((pred-applic? e) (code-gen-applic e params env))
 			((pred-tc-applic? e) (code-gen-tc-applic e params env))
-      ((pred-bvar? e) (code-gen-bvar e params env))
-      ((pred-pvar? e) (code-gen-pvar e params env))
-      ((pred-fvar? e) (code-gen-fvar e params env))
+		    ((pred-bvar? e) (code-gen-bvar e params env))
+		    ((pred-pvar? e) (code-gen-pvar e params env))
+		    ((pred-fvar? e) (code-gen-fvar e params env))
 			(else (error 'code-gen
                     (format "I can't recognize this: ~s" e)))
 		)
@@ -725,6 +726,33 @@
   )
 )
 
+(define code-gen-fvar
+	(lambda (e params env)
+		(with e
+			(lambda (fvar var)
+				(cond
+					((eq? var 'cons) (string-append "MOV(R0, IMM(SOB_PRIM_CONS));" nl))
+					((eq? var 'car) (string-append "MOV(R0, IMM(SOB_PRIM_CAR));" nl))
+					((eq? var 'cdr) (string-append "MOV(R0, IMM(SOB_PRIM_CDR));" nl))
+					((eq? var 'procedure?) (string-append "MOV(R0, IMM(SOB_PRIM_PROCEDURE));" nl))
+					((eq? var 'null?) (string-append "MOV(R0, IMM(SOB_PRIM_NULL));" nl))
+					((eq? var 'pair?) (string-append "MOV(R0, IMM(SOB_PRIM_PAIR));" nl))
+					((eq? var 'number?) (string-append "MOV(R0, IMM(SOB_PRIM_NUMBER));" nl))
+					((eq? var 'integer?) (string-append "MOV(R0, IMM(SOB_PRIM_INTEGER));" nl))
+					((eq? var 'char?) (string-append "MOV(R0, IMM(SOB_PRIM_CHAR));" nl))
+					((eq? var 'boolean?) (string-append "MOV(R0, IMM(SOB_PRIM_BOOLEAN));" nl))
+					((eq? var 'symbol?) (string-append "MOV(R0, IMM(SOB_PRIM_SYMBOL));" nl))
+					((eq? var 'string?) (string-append "MOV(R0, IMM(SOB_PRIM_STRING));" nl))
+					((eq? var 'vector?) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR));" nl))
+					((eq? var 'zero?) (string-append "MOV(R0, IMM(SOB_PRIM_ZERO));" nl))
+					(else (error 'code-gen-fvar
+						(format "variable ~s is not bound" var)))
+				)
+			)
+		)
+	)
+)
+
 (define code-gen-const
 	(lambda (e params env)
 		(let ((expr (cadr e)))
@@ -751,310 +779,321 @@
 
 ;;;;;;;;;;;;;;;; procedure implementation ;;;;;;;;;;;;;;;;;;
 
-(define prim_procedure?
+(define prim_procedure
 	(lambda ()
 		(string-append
-			"JUMP(L_procedure?_cont);" nl
-			"L_prim_procedure?:" nl
+			"/* primitive procedure?  */" nl
+			"JUMP(L_procedure_cont);" nl
+			"L_prim_procedure:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_CLOSURE);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_procedure?_True);" nl
+			tab "JUMP_EQ(L_procedure_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_procedure?_Exit);" nl
-			tab "L_procedure?_True:" nl
+			tab "JUMP(L_procedure_Exit);" nl
+			tab "L_procedure_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_procedure?_Exit:" nl
+			tab "L_procedure_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_procedure?_cont:" nl
+			"L_procedure_cont:" nl
 			tab "MOV(IND(2), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(3), IMM(451794));" nl
-			tab "MOV(IND(4), LABEL(L_prim_procedure?));" nl
-			"#define SOB_PRIM_PROCEDURE? 2" nl
+			tab "MOV(IND(4), LABEL(L_prim_procedure));" nl
+			"#define SOB_PRIM_PROCEDURE 2" nl
 		)
 	)
 )
 
-(define prim_null?
+(define prim_null
 	(lambda ()
 		(string-append
-			"JUMP(L_null?_cont);" nl
-			"L_prim_null?:" nl
+			"/* primitive null?  */" nl
+			"JUMP(L_null_cont);" nl
+			"L_prim_null:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_NIL);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_null?_True);" nl
+			tab "JUMP_EQ(L_null_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_null?_Exit);" nl
-			tab "L_null?_True:" nl
+			tab "JUMP(L_null_Exit);" nl
+			tab "L_null_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_null?_Exit:" nl
+			tab "L_null_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_null?_cont:" nl
+			"L_null_cont:" nl
 			tab "MOV(IND(5), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(6), IMM(544512));" nl
-			tab "MOV(IND(7), LABEL(L_prim_null?));" nl
-			"#define SOB_PRIM_NULL? 5" nl
+			tab "MOV(IND(7), LABEL(L_prim_null));" nl
+			"#define SOB_PRIM_NULL 5" nl
 		)
 	)
 )
 
-(define prim_pair?
+(define prim_pair
 	(lambda ()
 		(string-append
-			"JUMP(L_pair?_cont);" nl
-			"L_prim_pair?:" nl
+			"/* primitive pair?  */" nl
+			"JUMP(L_pair_cont);" nl
+			"L_prim_pair:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_PAIR);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_pair?_True);" nl
+			tab "JUMP_EQ(L_pair_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_pair?_Exit);" nl
-			tab "L_pair?_True:" nl
+			tab "JUMP(L_pair_Exit);" nl
+			tab "L_pair_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_pair?_Exit:" nl
+			tab "L_pair_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_pair?_cont:" nl
+			"L_pair_cont:" nl
 			tab "MOV(IND(8), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(9), IMM(183403));" nl
-			tab "MOV(IND(10), LABEL(L_prim_pair?));" nl
-			"#define SOB_PRIM_PAIR? 8" nl
+			tab "MOV(IND(10), LABEL(L_prim_pair));" nl
+			"#define SOB_PRIM_PAIR 8" nl
 		)
 	)
 )
 
-(define prim_number?
+(define prim_number
 	(lambda ()
 		(string-append
-			"JUMP(L_number?_cont);" nl
-			"L_prim_number?:" nl
+			"/* primitive number?  */" nl
+			"JUMP(L_number_cont);" nl
+			"L_prim_number:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_INTEGER);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_number?_True);" nl
+			tab "JUMP_EQ(L_number_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_number?_Exit);" nl
-			tab "L_number?_True:" nl
+			tab "JUMP(L_number_Exit);" nl
+			tab "L_number_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_number?_Exit:" nl
+			tab "L_number_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_number?_cont:" nl
+			"L_number_cont:" nl
 			tab "MOV(IND(11), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(12), IMM(101555));" nl
-			tab "MOV(IND(13), LABEL(L_prim_number?));" nl
-			"#define SOB_PRIM_NUMBER? 11" nl
+			tab "MOV(IND(13), LABEL(L_prim_number));" nl
+			"#define SOB_PRIM_NUMBER 11" nl
 		)
 	)
 )
 
-(define prim_integer?
+(define prim_integer
 	(lambda ()
 		(string-append
-			"JUMP(L_integer?_cont);" nl
-			"L_prim_integer?:" nl
+			"/* primitive integer?  */" nl
+			"JUMP(L_integer_cont);" nl
+			"L_prim_integer:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_INTEGER);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_integer?_True);" nl
+			tab "JUMP_EQ(L_integer_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_integer?_Exit);" nl
-			tab "L_integer?_True:" nl
+			tab "JUMP(L_integer_Exit);" nl
+			tab "L_integer_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_integer?_Exit:" nl
+			tab "L_integer_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_integer?_cont:" nl
+			"L_integer_cont:" nl
 			tab "MOV(IND(14), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(15), IMM(957412));" nl
-			tab "MOV(IND(16), LABEL(L_prim_integer?));" nl
-			"#define SOB_PRIM_INTEGER? 14" nl
+			tab "MOV(IND(16), LABEL(L_prim_integer));" nl
+			"#define SOB_PRIM_INTEGER 14" nl
 		)
 	)
 )
 
-(define prim_char?
+(define prim_char
 	(lambda ()
 		(string-append
-			"JUMP(L_char?_cont);" nl
-			"L_prim_char?:" nl
+			"/* primitive char?  */" nl
+			"JUMP(L_char_cont);" nl
+			"L_prim_char:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_CHAR);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_char?_True);" nl
+			tab "JUMP_EQ(L_char_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_char?_Exit);" nl
-			tab "L_char?_True:" nl
+			tab "JUMP(L_char_Exit);" nl
+			tab "L_char_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_char?_Exit:" nl
+			tab "L_char_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_char?_cont:" nl
+			"L_char_cont:" nl
 			tab "MOV(IND(17), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(18), IMM(645713));" nl
-			tab "MOV(IND(19), LABEL(L_prim_char?));" nl
-			"#define SOB_PRIM_CHAR? 17" nl
+			tab "MOV(IND(19), LABEL(L_prim_char));" nl
+			"#define SOB_PRIM_CHAR 17" nl
 		)
 	)
 )
 
-(define prim_boolean?
+(define prim_boolean
 	(lambda ()
 		(string-append
-			"JUMP(L_boolean?_cont);" nl
-			"L_prim_boolean?:" nl
+			"/* primitive boolean?  */" nl
+			"JUMP(L_boolean_cont);" nl
+			"L_prim_boolean:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_BOOL);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_boolean?_True);" nl
+			tab "JUMP_EQ(L_boolean_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_boolean?_Exit);" nl
-			tab "L_boolean?_True:" nl
+			tab "JUMP(L_boolean_Exit);" nl
+			tab "L_boolean_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_boolean?_Exit:" nl
+			tab "L_boolean_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_boolean?_cont:" nl
+			"L_boolean_cont:" nl
 			tab "MOV(IND(20), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(21), IMM(110463));" nl
-			tab "MOV(IND(22), LABEL(L_prim_boolean?));" nl
-			"#define SOB_PRIM_BOOLEAN? 20" nl
+			tab "MOV(IND(22), LABEL(L_prim_boolean));" nl
+			"#define SOB_PRIM_BOOLEAN 20" nl
 		)
 	)
 )
 
-(define prim_symbol?
+(define prim_symbol
 	(lambda ()
 		(string-append
-			"JUMP(L_symbol?_cont);" nl
-			"L_prim_symbol?:" nl
+			"/* primitive symbol?  */" nl
+			"JUMP(L_symbol_cont);" nl
+			"L_prim_symbol:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_SYMBOL);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_symbol?_True);" nl
+			tab "JUMP_EQ(L_symbol_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_symbol?_Exit);" nl
-			tab "L_symbol?_True:" nl
+			tab "JUMP(L_symbol_Exit);" nl
+			tab "L_symbol_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_symbol?_Exit:" nl
+			tab "L_symbol_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_symbol?_cont:" nl
+			"L_symbol_cont:" nl
 			tab "MOV(IND(23), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(24), IMM(358902));" nl
-			tab "MOV(IND(25), LABEL(L_prim_symbol?));" nl
-			"#define SOB_PRIM_SYMBOL? 23" nl
+			tab "MOV(IND(25), LABEL(L_prim_symbol));" nl
+			"#define SOB_PRIM_SYMBOL 23" nl
 		)
 	)
 )
 
-(define prim_string?
+(define prim_string
 	(lambda ()
 		(string-append
-			"JUMP(L_string?_cont);" nl
-			"L_prim_string?:" nl
+			"/* primitive string?  */" nl
+			"JUMP(L_string_cont);" nl
+			"L_prim_string:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_STRING);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_string?_True);" nl
+			tab "JUMP_EQ(L_string_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_string?_Exit);" nl
-			tab "L_string?_True:" nl
+			tab "JUMP(L_string_Exit);" nl
+			tab "L_string_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_string?_Exit:" nl
+			tab "L_string_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_string?_cont:" nl
+			"L_string_cont:" nl
 			tab "MOV(IND(26), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(27), IMM(511179));" nl
-			tab "MOV(IND(28), LABEL(L_prim_string?));" nl
-			"#define SOB_PRIM_STRING? 26" nl
+			tab "MOV(IND(28), LABEL(L_prim_string));" nl
+			"#define SOB_PRIM_STRING 26" nl
 		)
 	)
 )
 
-(define prim_vector?
+(define prim_vector
 	(lambda ()
 		(string-append
-			"JUMP(L_vector?_cont);" nl
-			"L_prim_vector?:" nl
+			"/* primitive vector?  */" nl
+			"JUMP(L_vector_cont);" nl
+			"L_prim_vector:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_SOB_VECTOR);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_vector?_True);" nl
+			tab "JUMP_EQ(L_vector_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_vector?_Exit);" nl
-			tab "L_vector?_True:" nl
+			tab "JUMP(L_vector_Exit);" nl
+			tab "L_vector_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_vector?_Exit:" nl
+			tab "L_vector_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_vector?_cont:" nl
+			"L_vector_cont:" nl
 			tab "MOV(IND(29), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(30), IMM(615181));" nl
-			tab "MOV(IND(31), LABEL(L_prim_vector?));" nl
-			"#define SOB_PRIM_VECTOR? 29" nl
+			tab "MOV(IND(31), LABEL(L_prim_vector));" nl
+			"#define SOB_PRIM_VECTOR 29" nl
 		)
 	)
 )
 
-(define prim_zero?
+(define prim_zero
 	(lambda ()
 		(string-append
-			"JUMP(L_zero?_cont);" nl
-			"L_prim_zero?:" nl
+			"/* primitive zero?  */" nl
+			"JUMP(L_zero_cont);" nl
+			"L_prim_zero:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "PUSH(FPARG(2)); //param" nl
 			tab "CALL(IS_ZERO);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
-			tab "JUMP_EQ(L_zero?_True);" nl
+			tab "JUMP_EQ(L_zero_True);" nl
 			tab "MOV(R0, SOB_FALSE);" nl
-			tab "JUMP(L_zero?_Exit);" nl
-			tab "L_zero?_True:" nl
+			tab "JUMP(L_zero_Exit);" nl
+			tab "L_zero_True:" nl
 			tab "MOV(R0, SOB_TRUE);" nl
-			tab "L_zero?_Exit:" nl
+			tab "L_zero_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_zero?_cont:" nl
+			"L_zero_cont:" nl
 			tab "MOV(IND(32), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(33), IMM(602995));" nl
-			tab "MOV(IND(34), LABEL(L_prim_zero?));" nl
-			"#define SOB_PRIM_ZERO? 32" nl
+			tab "MOV(IND(34), LABEL(L_prim_zero));" nl
+			"#define SOB_PRIM_ZERO 32" nl
 		)
 	)
 )
@@ -1062,6 +1101,7 @@
 (define prim_car
 	(lambda ()
 		(string-append
+			"/* primitive car  */" nl
 			"JUMP(L_car_cont);" nl
 			"L_prim_car:" nl
 			tab "PUSH(FP);" nl
@@ -1090,6 +1130,7 @@
 (define prim_cdr
 	(lambda ()
 		(string-append
+			"/* primitive cdr  */" nl
 			"JUMP(L_cdr_cont);" nl
 			"L_prim_cdr:" nl
 			tab "PUSH(FP);" nl
@@ -1111,6 +1152,29 @@
 			tab "MOV(IND(39), IMM(685967));" nl
 			tab "MOV(IND(40), LABEL(L_prim_cdr));" nl
 			"#define SOB_PRIM_CDR 38" nl
+		)
+	)
+)
+
+(define prim_cons
+	(lambda ()
+		(string-append
+			"/* primitive cons  */" nl
+			"JUMP(L_cons_cont);" nl
+			"L_prim_cons:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(FPARG(3)); // The cdr"  nl
+			tab "PUSH(FPARG(2)); // The car" nl
+			tab "CALL(MAKE_SOB_PAIR);" nl
+			tab "DROP(2);" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_cons_cont:" nl
+			tab "MOV(IND(41), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(42), IMM(286949));" nl
+			tab "MOV(IND(43), LABEL(L_prim_cons));" nl
+			"#define SOB_PRIM_CONS 41" nl
 		)
 	)
 )
