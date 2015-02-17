@@ -16,7 +16,7 @@
 
 ;;; rename ++ to +
 
-(define ++
+(define +
   (letrec ((loop
 	    (lambda (s)
 	      (if (null? s)
@@ -27,7 +27,7 @@
 
 ;;; rename ** to *
 
-(define **
+(define *
   (letrec ((loop
 	    (lambda (s)
 	      (if (null? s)
@@ -38,19 +38,19 @@
 
 ;;; rename -- to -
 
-(define --
+(define -
   (lambda (a . s)
     (if (null? s)
 	(bin- 0 a)
-	(bin- a (apply ++ s)))))
+	(bin- a (apply + s)))))
 
 ;;; rename // to /
 
-(define //
+(define /
   (lambda (a . s)
     (if (null? s)
 	(bin/ 1 a)
-	(bin/ a (apply ** s)))))
+	(bin/ a (apply * s)))))
 
 ;;;
 
@@ -151,6 +151,9 @@
 ;;; You need to have the following binary boolean predicates:
 ;;; bin<?
 ;;; bin=?
+
+(define bin<? (lambda (a b) (< a b)))
+(define bin=? (lambda (a b) (= a b)))
 
 (define bin>? (lambda (a b) (bin<? b a)))
 (define bin<=? (lambda (a b) (not (bin>? a b))))

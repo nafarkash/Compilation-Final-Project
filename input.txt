@@ -1,1 +1,1 @@
-(set-cdr! (cons #t #t) #f)
+(make-vector 5 #t)

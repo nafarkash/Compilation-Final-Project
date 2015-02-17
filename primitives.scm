@@ -629,3 +629,247 @@
 		)
 	)
 )
+
+;;; TODO: change the SOB_VOID to undefined char
+(define prim_make-string
+	(lambda ()
+		(string-append
+			"/* primitive make-string  */" nl
+			"JUMP(L_makeStr_cont);" nl
+			"L_prim_makeStr:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, FPARG(1)); //number of args on stack" nl
+			tab "MOV(R1, FPARG(2)); //size of new string" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_makeStr_oneArg); //only one arg, make-string with unspecified content" nl
+			"/* didn't jump, fill the string with the second arg */" nl
+			tab "MOV(R2, FPARG(3)); //the char" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_EQ(L_makeStr_Exit);" nl
+			"L_makeStr_twoArgs_BeginPush:" nl
+			tab "PUSH(R2);" nl
+			tab "DECR(R1);" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_NE(L_makeStr_twoArgs_BeginPush);" nl
+			tab "JUMP(L_makeStr_Exit);" nl
+			"L_makeStr_oneArg:" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_EQ(L_makeStr_Exit);" nl
+			"L_makeStr_oneArg_BeginPush:" nl
+			tab "PUSH(SOB_VOID);" nl
+			tab "DECR(R1);" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_NE(L_makeStr_oneArg_BeginPush);" nl
+			"L_makeStr_Exit:" nl
+			"/* done pushing the string content */" nl
+			tab "PUSH(FPARG(2)); //size of string"
+			tab "CALL(MAKE_SOB_STRING);" nl
+			tab "DROP(FPARG(2) + 1); //drop unnecessary values from stack" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_makeStr_cont:" nl
+			tab "MOV(IND(67), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(68), IMM(911091));" nl
+			tab "MOV(IND(69), LABEL(L_prim_makeStr));" nl
+			"#define SOB_PRIM_MAKE_STRING 67" nl
+		)
+	)
+)
+
+;;; TODO: change the SOB_VOID to (SOB_INTEGER(0))
+(define prim_make-vector
+	(lambda ()
+		(string-append
+			"/* primitive make-vector  */" nl
+			"JUMP(L_makeVec_cont);" nl
+			"L_prim_makeVec:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, FPARG(1)); //number of args on stack" nl
+			tab "MOV(R1, FPARG(2)); //size of new vector" nl
+			tab "CMP(R0, IMM(1));" nl
+			tab "JUMP_EQ(L_makeVec_oneArg); //only one arg, make-vector with unspecified content" nl
+			"/* didn't jump, fill the vector with the second arg */" nl
+			tab "MOV(R2, FPARG(3)); //the value" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_EQ(L_makeVec_Exit);" nl
+			"L_makeVec_twoArgs_BeginPush:" nl
+			tab "PUSH(R2);" nl
+			tab "DECR(R1);" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_NE(L_makeVec_twoArgs_BeginPush);" nl
+			tab "JUMP(L_makeVec_Exit);" nl
+			"L_makeVec_oneArg:" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_EQ(L_makeVec_Exit);" nl
+			"L_makeVec_oneArg_BeginPush:" nl
+			tab "PUSH(SOB_VOID);" nl
+			tab "DECR(R1);" nl
+			tab "CMP(R1, IMM(0));" nl
+			tab "JUMP_NE(L_makeVec_oneArg_BeginPush);" nl
+			"L_makeVec_Exit:" nl
+			"/* done pushing the vector content */" nl
+			tab "PUSH(FPARG(2)); //size of vector"
+			tab "CALL(MAKE_SOB_VECTOR);" nl
+			tab "DROP(FPARG(2) + 1); //drop unnecessary values from stack" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_makeVec_cont:" nl
+			tab "MOV(IND(70), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(71), IMM(400183));" nl
+			tab "MOV(IND(72), LABEL(L_prim_makeVec));" nl
+			"#define SOB_PRIM_MAKE_VECTOR 70" nl
+		)
+	)
+)
+
+;;; using support-code.scm we need to implement bin+, bin-, bin*, bin/, bin<, bin=
+;;TODO: with the entire procs, replace the memory value
+(define prim_bin+
+	(lambda ()
+		(string-append
+			"/* primitive binary plus (+)  */" nl
+			"JUMP(L_plus_cont);" nl
+			"L_prim_plus:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
+			tab "ADD(R0, INDD(FPARG(3),1)); //add the second value as long value" nl
+			tab "PUSH(R0);" nl
+			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_plus_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(777096));" nl
+			tab "MOV(IND(66), LABEL(L_prim_plus));" nl
+			"#define SOB_PRIM_PLUS 64" nl
+		)
+	)
+)
+
+(define prim_bin-
+	(lambda ()
+		(string-append
+			"/* primitive binary subtract (-)  */" nl
+			"JUMP(L_subtract_cont);" nl
+			"L_prim_subtract:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
+			tab "SUB(R0, INDD(FPARG(3),1)); //subtract the second value as long value" nl
+			tab "PUSH(R0);" nl
+			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_subtract_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(155936));" nl
+			tab "MOV(IND(66), LABEL(L_prim_subtract));" nl
+			"#define SOB_PRIM_SUBTRACT 64" nl
+		)
+	)
+)
+
+(define prim_bin*
+	(lambda ()
+		(string-append
+			"/* primitive binary multiplication (*)  */" nl
+			"JUMP(L_mult_cont);" nl
+			"L_prim_mult:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
+			tab "MUL(R0, INDD(FPARG(3),1)); //multiply the second value as long value" nl
+			tab "PUSH(R0);" nl
+			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_mult_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(721327));" nl
+			tab "MOV(IND(66), LABEL(L_prim_mult));" nl
+			"#define SOB_PRIM_MULTIPLY 64" nl
+		)
+	)
+)
+
+(define prim_bin/
+	(lambda ()
+		(string-append
+			"/* primitive binary divide (/)  */" nl
+			"JUMP(L_div_cont);" nl
+			"L_prim_div:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
+			tab "MUL(R0, INDD(FPARG(3),1)); //divide the second value as long value" nl
+			tab "PUSH(R0);" nl
+			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_div_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(775216));" nl
+			tab "MOV(IND(66), LABEL(L_prim_div));" nl
+			"#define SOB_PRIM_DIVIDE 64" nl
+		)
+	)
+)
+
+(define prim_bin<
+	(lambda ()
+		(string-append
+			"/* primitive binary smaller than (<)  */" nl
+			"JUMP(L_smaller_cont);" nl
+			"L_prim_smaller:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, FPARG(2)); //first value" nl
+			tab "SUB(R0, FPARG(3)); //second value" nl
+			tab "CMP(R0, IMM(0));" nl
+			tab "JUMP_GE(L_prim_smaller_false); //if greater or equal to zero, then the result is false" nl
+			tab "MOV(R0, SOB_TRUE);"
+			tab "JUMP(L_prim_smaller_Exit);" nl
+			"L_prim_smaller_false:" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			"L_prim_smaller_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_smaller_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(922870));" nl
+			tab "MOV(IND(66), LABEL(L_prim_smaller));" nl
+			"#define SOB_PRIM_SMALLER 64" nl
+		)
+	)
+)
+
+(define prim_bin=
+	(lambda ()
+		(string-append
+			"/* primitive binary equal (=)  */" nl
+			"JUMP(L_equal_cont);" nl
+			"L_prim_equal:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, FPARG(2)); //first value" nl
+			tab "SUB(R0, FPARG(3)); //second value" nl
+			tab "CMP(R0, IMM(0));" nl
+			tab "JUMP_NE(L_prim_equal_false); " nl
+			tab "MOV(R0, SOB_TRUE);"
+			tab "JUMP(L_prim_equal_Exit);" nl
+			"L_prim_equal_false:" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			"L_prim_equal_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_equal_cont:" nl
+			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(65), IMM(152305));" nl
+			tab "MOV(IND(66), LABEL(L_prim_equal));" nl
+			"#define SOB_PRIM_EQUAL 64" nl
+		)
+	)
+)

@@ -126,6 +126,8 @@
 			  (prim_string-set!)
 			  (prim_string-ref)
 			  (prim_vector-ref)
+			  (prim_make-string)
+			  (prim_make-vector)
 			  nl
 			  "/* begin of generated code */ " nl nl nl
 
@@ -762,6 +764,8 @@
 					((eq? var 'string-set!) (string-append "MOV(R0, IMM(SOB_PRIM_STRING_SET));" nl))
 					((eq? var 'string-ref) (string-append "MOV(R0, IMM(SOB_PRIM_STRING_REF));" nl))
 					((eq? var 'vector-ref) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_REF));" nl))
+					((eq? var 'make-string) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_STRING));" nl))
+					((eq? var 'make-vector) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));" nl))
 					(else (error 'code-gen-fvar
 						(format "variable ~s is not bound" var)))
 				)
