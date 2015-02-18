@@ -223,7 +223,10 @@
 (define epilog
 	(lambda ()
 		(string-append
-  			"SHOW(\"exit with \", R0);" nl
+  			"PUSH(R0);" nl
+  			"CALL(WRITE_SOB);" nl
+  			"CALL(NEWLINE);" nl
+  			"DROP(1);"
 			 "STOP_MACHINE;" nl
   			"return 0;" nl
 			"}" nl

@@ -646,42 +646,16 @@ L_apply_cont:
 /* begin of constant definition */ 
 
 
+long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 1 , 945311 , 2  };//constsnts array
+memcpy((void*) &IND(100), (void*) &mem_init, 10*WORD_SIZE);
 
-long mem_init[10] = { IMM(T_VOID), IMM(T_NIL), IMM(T_BOOL), IMM(0), IMM(T_BOOL), IMM(1), IMM(945311), IMM(1), IMM(945311), IMM(2)};
-int i;
-int n = sizeof(mem_init)/sizeof(mem_init[0]);
-						PUSH(n);
-						CALL(MALLOC);
-						DROP(1);
-						for(i=0;i<n;i++)
-						{
-  							MOV(INDD(R0,i),mem_init[i]);
-						}
-                        //begin expr: (applic (fvar apply) ((lambda-simple (x y) (pvar y 1)) (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))))
+
+/* start of generated code */
+
+
+//begin expr: (applic (fvar cons) ((const 1) (const 2)))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
-//begin expr: (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))
-PUSH(IMM(SOB_NIL)); //MAGIC BOX
-//begin expr: (applic (fvar cons) ((const 2) (const ())))
-PUSH(IMM(SOB_NIL)); //MAGIC BOX
-MOV(R0,101);
-PUSH(R0);
 MOV(R0,108);
-PUSH(R0);
-PUSH(IMM(3)); //pushing args size to stack +1 for magic box
-// done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_CONS));
-CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure3);
-PUSH(INDD(R0,1));  // env
-CALLA(INDD(R0,2));  //code
-MOV(R1, STARG(0));
-ADD(R1, IMM(2));
-DROP (R1);
-JUMP(LprocExit3);
-LnotProcedure3:
-SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit3:
-//end expr: (applic (fvar cons) ((const 2) (const ())))
 PUSH(R0);
 MOV(R0,106);
 PUSH(R0);
@@ -689,96 +663,20 @@ PUSH(IMM(3)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
 MOV(R0, IMM(SOB_PRIM_CONS));
 CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure2);
+JUMP_NE(LnotProcedure7);
 PUSH(INDD(R0,1));  // env
 CALLA(INDD(R0,2));  //code
 MOV(R1, STARG(0));
 ADD(R1, IMM(2));
 DROP (R1);
-JUMP(LprocExit2);
-LnotProcedure2:
+JUMP(LprocExit7);
+LnotProcedure7:
 SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit2:
-//end expr: (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))
+LprocExit7:
+//end expr: (applic (fvar cons) ((const 1) (const 2)))
 PUSH(R0);
-//begin expr: (lambda-simple (x y) (pvar y 1))
-//env-size: 0    params-size: 0
-PUSH(IMM(1)); //new env size: 1
-CALL(MALLOC);
-DROP(1);
-// R1 will hold new increased size env 
-MOV(R1,R0);
-MOV(R4, IMM(0));
-CMP(R4, IMM(0));
-JUMP_EQ(L_lambda_env_End1); 
-MOV(R2, FPARG(0)); //env
-MOV(R5, IMM(0));
-MOV(R6, IMM(1));
-L_lambda_env_Begin1:
-	MOV(INDD(R1,R6), INDD(R2,R5));
-	DECR(R4);
-	INCR(R5);
-	INCR(R6);
-	CMP(R4, IMM(0));
-	JUMP_NE(L_lambda_env_Begin1);
-L_lambda_env_End1:
-// handling with params 
-MOV(R4, IMM(0));
-CMP(R4, IMM(0));
-JUMP_EQ(L_lambda_args_End1); 
-PUSH(IMM(0));
-CALL(MALLOC);
-DROP(1);
-MOV(R3,R0);
-MOV(R5, IMM(0));
-L_lambda_args_Begin1:
-	MOV(R6,R5);
-	ADD(R6, IMM(2));
-	MOV(INDD(R3,R5), FPARG(R6));
-	DECR(R4);
-	INCR(R5);
-	CMP(R4, IMM(0));
-	JUMP_NE(L_lambda_args_Begin1);
-L_lambda_args_End1:
-MOV(INDD(R1,0), R3); //now R1 holds the environment
-// done handling with params 
-
-// build the closure
-PUSH(LABEL(LlambdaCont1));
-PUSH(R1);
-CALL(MAKE_SOB_CLOSURE);
-DROP(IMM(2));
-JUMP(LlambdaExit1);
-LlambdaCont1:
-PUSH(FP);
-MOV(FP,SP);
-//body code-gen
-//begin expr: (pvar y 1)
-MOV(R0, FPARG(2 + 1));
-//end expr: (pvar y 1)
-//end body code-gen
-POP(FP);
-RETURN;
-LlambdaExit1:
-
-//end expr: (lambda-simple (x y) (pvar y 1))
-PUSH(R0);
-PUSH(IMM(3)); //pushing args size to stack +1 for magic box
-// done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_APPLY));
-CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure1);
-PUSH(INDD(R0,1));  // env
-CALLA(INDD(R0,2));  //code
-MOV(R1, STARG(0));
-ADD(R1, IMM(2));
-DROP (R1);
-JUMP(LprocExit1);
-LnotProcedure1:
-SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit1:
-//end expr: (applic (fvar apply) ((lambda-simple (x y) (pvar y 1)) (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))))
-SHOW("exit with ", R0);
-STOP_MACHINE;
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);STOP_MACHINE;
 return 0;
 }
