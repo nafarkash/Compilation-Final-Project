@@ -16,7 +16,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+(define T_VOID 		937610)
+(define T_NIL 		722689)
+(define T_BOOL 		741553)
+(define T_CHAR 		181048)
+(define T_INTEGER 	945311)
+(define T_STRING 	799345)
+(define T_SYMBOL 	368031)
+(define T_PAIR 		885397)
+(define T_VECTOR 	335728)
+(define T_CLOSURE 	276405)
 
 (define ^^label
   (lambda (name)
@@ -94,15 +103,9 @@
 			  "#include \"arch/scheme.lib\"" nl
 			  "CONTINUE:" nl nl
 			  "ADD (IND(0), IMM(1000));" nl
-			  "MOV (IND(100), IMM(T_VOID));" nl
 			  "#define SOB_VOID 100" nl
-			  "MOV (IND(101), IMM(T_NIL));" nl
 			  "#define SOB_NIL 101" nl
-			  "MOV (IND(102), IMM(T_BOOL));" nl
-			  "MOV (IND(103), IMM(0));" nl
 			  "#define SOB_FALSE 102" nl
-			  "MOV (IND(104), IMM(T_BOOL));" nl
-			  "MOV (IND(105), IMM(1));" nl
 			  "#define SOB_TRUE 104" nl nl
 			  (prim_procedure)
 			  (prim_null)
@@ -128,8 +131,9 @@
 			  (prim_vector-ref)
 			  (prim_make-string)
 			  (prim_make-vector)
+			  (prim_apply)
 			  nl
-			  "/* begin of generated code */ " nl nl nl
+			  "/* begin of constant definition */ " nl nl nl
 
 
 
@@ -137,6 +141,84 @@
 		)
 	)
 )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;; const handling  ;;;;;;;;;;;;;;;;;;;;;;;;;
+(define flatten 
+	(lambda (x)
+  		(cond ((null? x) '())
+        	((pair? x) (append (flatten (car x)) (flatten (cdr x))))
+        	(else (list x))
+        )
+    )
+)
+
+(define remove-comma
+	(lambda ()
+		(append (list (format "~s " (car (caddar *ct*)))) (map (lambda (x) (format ", ~s " x)) (apply append (map caddr (cdr *ct*)))))
+	)
+)
+
+(define consts
+	(lambda ()
+    	(let* ((lst (remove-comma))
+          	 (lst-size (length lst))
+           	(str (string-append "long mem_init[] = { "(apply string-append lst) " };//constsnts array\n"
+                                  (format "memcpy((void*) &IND(100), (void*) &mem_init, ~s*WORD_SIZE);\n\n\n" lst-size)
+            				          "/* start of generated code */" nl nl nl))
+              )
+    	str
+    	)
+	)
+)
+
+(define *ct* 
+	`((100 ,(void) (,T_VOID))
+	  (101 () (,T_NIL))
+	  (102 #f (,T_BOOL 0))
+	  (104 #t (,T_BOOL 1)))
+)
+
+(define mem_loc 106)
+
+(define addto-ct 
+	(lambda (e)
+		(if (null? *ct*)
+			(set! *ct* (list e))
+			(let ((nct (append *ct* (list e))))
+				(set! *ct* nct))
+		)
+	)
+)
+
+(define findAddConst
+	(lambda (e)
+		(let* ((vals (map cadr *ct*))
+			(doExist (member e vals)))
+			(if doExist
+				(let* ((indx (- (length *ct*) (length doExist))))
+					(car (list-ref *ct* indx)))
+				(let* ((type (cond 
+								((symbol? e) `(,T_STRING ,(string-length (symbol->string e)) ,@(map char->integer (string->list (symbol->string e)))))
+								((integer? e) `(,T_INTEGER ,e))                      
+								((string? e) `(,T_STRING ,(string-length e) ,@(map char->integer (string->list e))))
+								((vector? e) `(,T_VECTOR ,(vector-length e) ,@(map findAddConst (vector->list e))))
+								((pair? e) `(,T_PAIR ,(findAddConst (car e)) ,(findAddConst (cdr e))))
+								((char? e) `(,T_CHAR ,(char->integer e)))
+								(else (error 'code-gen
+									(format "I can't recognize this: ~s" e)))))
+						(type_length (length type)))
+						(addto-ct `(,mem_loc ,e ,type))
+						(set! mem_loc (+ mem_loc type_length))
+					(- mem_loc type_length))
+			)
+		)
+	)
+)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define epilog
 	(lambda ()
@@ -157,6 +239,7 @@
 		(let* ((text (file->sexpr input))
 			(parsed (string-append
 						(prolog)
+						(consts)
 						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0)) text))
 						(epilog)
 					)))
@@ -177,7 +260,7 @@
 			((pred-lambda-variadic? e) (code-gen-lambda-variadic e params env))
 			((pred-seq? e) (code-gen-seq e params env))
 			((pred-or? e) (code-gen-or e params env))
-			((pred-const? e) (code-gen-const e params env))
+			((pred-const? e) (code-gen-const e))
 			((pred-applic? e) (code-gen-applic e params env))
 			((pred-tc-applic? e) (code-gen-tc-applic e params env))
 		    ((pred-bvar? e) (code-gen-bvar e params env))
@@ -766,6 +849,7 @@
 					((eq? var 'vector-ref) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_REF));" nl))
 					((eq? var 'make-string) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_STRING));" nl))
 					((eq? var 'make-vector) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));" nl))
+					((eq? var 'apply) (string-append "MOV(R0, IMM(SOB_PRIM_APPLY));" nl))
 					(else (error 'code-gen-fvar
 						(format "variable ~s is not bound" var)))
 				)
@@ -775,31 +859,10 @@
 )
 
 (define code-gen-const
-	(lambda (e params env)
-		(let ((expr (cadr e)))
-			(cond
-				((null? expr) (string-append "MOV(R0, IMM(SOB_NIL));" nl))
-				((equal? expr *void-object*) (string-append "MOV(R0, IMM(SOB_VOID));" nl))
-				((boolean? expr)
-					(if (eq? expr #t)
-						(string-append "MOV(R0, IMM(SOB_TRUE));" nl)
-						(string-append "MOV(R0, IMM(SOB_FALSE));" nl)
-					)
-				)
-				((string? expr) )
-				((number? expr) )
-				((char? expr) )
-				(else (error 'code-gen-const
-					(format "I can't recognize this: ~s" expr)))
-			)
-		)
-
+  (lambda  (e)
+  	(let ((expr (cadr e)))
+    	(string-append "MOV(R0," (number->string (findAddConst expr)) ");" nl)
 	)
+  )
 )
-
-
-
-
-
-
 

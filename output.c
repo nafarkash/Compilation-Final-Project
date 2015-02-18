@@ -16,15 +16,9 @@ JUMP(CONTINUE);
 CONTINUE:
 
 ADD (IND(0), IMM(1000));
-MOV (IND(100), IMM(T_VOID));
 #define SOB_VOID 100
-MOV (IND(101), IMM(T_NIL));
 #define SOB_NIL 101
-MOV (IND(102), IMM(T_BOOL));
-MOV (IND(103), IMM(0));
 #define SOB_FALSE 102
-MOV (IND(104), IMM(T_BOOL));
-MOV (IND(105), IMM(1));
 #define SOB_TRUE 104
 
 /* primitive procedure?  */
@@ -370,48 +364,48 @@ L_vecLength_cont:
 	MOV(IND(48), LABEL(L_prim_vecLength));
 #define SOB_PRIM_VECTOR_LENGTH 46
 /* primitive set-car!  */
-JUMP(L_set-car_cont);
-L_prim_set-car:
+JUMP(L_set_car_cont);
+L_prim_set_car:
 	PUSH(FP);
 	MOV(FP, SP);
 	MOV(R0, FPARG(2)); // the pair
 	CMP(IND(R0), T_PAIR);
-	JUMP_NE(L_set-car_ERROR);
+	JUMP_NE(L_set_car_ERROR);
 	MOV(R1, FPARG(3)); // new value
 	MOV(INDD(R0,1), R1); // set!
 	MOV(R0, SOB_VOID); //set-car! returns void
-	JUMP(L_set-car_Exit);
-L_set-car_ERROR:
-	SHOW("Exception in set-car!, This is not a pair: ", R0);
-L_set-car_Exit:
+	JUMP(L_set_car_Exit);
+L_set_car_ERROR:
+	SHOW("Exception in set_car!, This is not a pair: ", R0);
+L_set_car_Exit:
 	POP(FP);
 	RETURN;
-L_set-car_cont:
+L_set_car_cont:
 	MOV(IND(49), IMM(T_CLOSURE));
 	MOV(IND(50), IMM(569917));
-	MOV(IND(51), LABEL(L_prim_set-car));
+	MOV(IND(51), LABEL(L_prim_set_car));
 #define SOB_PRIM_SET_CAR 49
 /* primitive set-cdr!  */
-JUMP(L_set-cdr_cont);
-L_prim_set-cdr:
+JUMP(L_set_cdr_cont);
+L_prim_set_cdr:
 	PUSH(FP);
 	MOV(FP, SP);
 	MOV(R0, FPARG(2)); // the pair
 	CMP(IND(R0), T_PAIR);
-	JUMP_NE(L_set-cdr_ERROR);
+	JUMP_NE(L_set_cdr_ERROR);
 	MOV(R1, FPARG(3)); // new value
 	MOV(INDD(R0,2), R1); // set!
 	MOV(R0, SOB_VOID); //set-cdr! returns void
-	JUMP(L_set-cdr_Exit);
-L_set-cdr_ERROR:
-	SHOW("Exception in set-cdr!, This is not a pair: ", R0);
-L_set-cdr_Exit:
+	JUMP(L_set_cdr_Exit);
+L_set_cdr_ERROR:
+	SHOW("Exception in set_cdr!, This is not a pair: ", R0);
+L_set_cdr_Exit:
 	POP(FP);
 	RETURN;
-L_set-cdr_cont:
+L_set_cdr_cont:
 	MOV(IND(52), IMM(T_CLOSURE));
 	MOV(IND(53), IMM(510364));
-	MOV(IND(54), LABEL(L_prim_set-cdr));
+	MOV(IND(54), LABEL(L_prim_set_cdr));
 #define SOB_PRIM_SET_CDR 52
 /* primitive vector-set!  */
 JUMP(L_vecSet_cont);
@@ -499,19 +493,197 @@ L_vecRef_cont:
 	MOV(IND(65), IMM(248183));
 	MOV(IND(66), LABEL(L_prim_vecRef));
 #define SOB_PRIM_VECTOR_REF 64
+/* primitive make-string  */
+JUMP(L_makeStr_cont);
+L_prim_makeStr:
+	PUSH(FP);
+	MOV(FP, SP);
+	MOV(R0, FPARG(1)); //number of args on stack
+	MOV(R1, FPARG(2)); //size of new string
+	CMP(R0, IMM(1));
+	JUMP_EQ(L_makeStr_oneArg); //only one arg, make-string with unspecified content
+/* didn't jump, fill the string with the second arg */
+	MOV(R2, FPARG(3)); //the char
+	CMP(R1, IMM(0));
+	JUMP_EQ(L_makeStr_Exit);
+L_makeStr_twoArgs_BeginPush:
+	PUSH(R2);
+	DECR(R1);
+	CMP(R1, IMM(0));
+	JUMP_NE(L_makeStr_twoArgs_BeginPush);
+	JUMP(L_makeStr_Exit);
+L_makeStr_oneArg:
+	CMP(R1, IMM(0));
+	JUMP_EQ(L_makeStr_Exit);
+L_makeStr_oneArg_BeginPush:
+	PUSH(SOB_VOID);
+	DECR(R1);
+	CMP(R1, IMM(0));
+	JUMP_NE(L_makeStr_oneArg_BeginPush);
+L_makeStr_Exit:
+/* done pushing the string content */
+	PUSH(FPARG(2)); //size of string	CALL(MAKE_SOB_STRING);
+	DROP(FPARG(2) + 1); //drop unnecessary values from stack
+	POP(FP);
+	RETURN;
+L_makeStr_cont:
+	MOV(IND(67), IMM(T_CLOSURE));
+	MOV(IND(68), IMM(911091));
+	MOV(IND(69), LABEL(L_prim_makeStr));
+#define SOB_PRIM_MAKE_STRING 67
+/* primitive make-vector  */
+JUMP(L_makeVec_cont);
+L_prim_makeVec:
+	PUSH(FP);
+	MOV(FP, SP);
+	MOV(R0, FPARG(1)); //number of args on stack
+	MOV(R1, FPARG(2)); //size of new vector
+	CMP(R0, IMM(1));
+	JUMP_EQ(L_makeVec_oneArg); //only one arg, make-vector with unspecified content
+/* didn't jump, fill the vector with the second arg */
+	MOV(R2, FPARG(3)); //the value
+	CMP(R1, IMM(0));
+	JUMP_EQ(L_makeVec_Exit);
+L_makeVec_twoArgs_BeginPush:
+	PUSH(R2);
+	DECR(R1);
+	CMP(R1, IMM(0));
+	JUMP_NE(L_makeVec_twoArgs_BeginPush);
+	JUMP(L_makeVec_Exit);
+L_makeVec_oneArg:
+	CMP(R1, IMM(0));
+	JUMP_EQ(L_makeVec_Exit);
+L_makeVec_oneArg_BeginPush:
+	PUSH(SOB_VOID);
+	DECR(R1);
+	CMP(R1, IMM(0));
+	JUMP_NE(L_makeVec_oneArg_BeginPush);
+L_makeVec_Exit:
+/* done pushing the vector content */
+	PUSH(FPARG(2)); //size of vector	CALL(MAKE_SOB_VECTOR);
+	DROP(FPARG(2) + 1); //drop unnecessary values from stack
+	POP(FP);
+	RETURN;
+L_makeVec_cont:
+	MOV(IND(70), IMM(T_CLOSURE));
+	MOV(IND(71), IMM(400183));
+	MOV(IND(72), LABEL(L_prim_makeVec));
+#define SOB_PRIM_MAKE_VECTOR 70
+/* primitive apply */
+JUMP(L_apply_cont);
+L_prim_apply:
+	PUSH(FP);
+	MOV(FP, SP);
+	/* determine list size */
+	MOV(R1,IMM(0)); //R1 will hold list size
+	MOV(R0, FPARG(3)); //list
+	L_apply_size_Begin:
+		CMP(IND(R0), T_PAIR);
+		JUMP_NE(L_apply_size_End);
+		INCR(R1);
+		MOV(R0, INDD(R0,2));
+		JUMP(L_apply_size_Begin);
+	L_apply_size_End:
+	/* done calculating list size, R1 holds it */
+	MOV(R2, R1); //save the size for later use
+	/* start pushing the list args to stack (last first) */
+	L_apply_begin_push:
+		CMP(R2, IMM(0));
+		JUMP_EQ(L_apply_end_push);
+		//loop that finds the current arg to push
+		MOV(R3, R2);
+		DECR(R3); //R3 holds number of inner iterations
+		MOV(R0, FPARG(3)); //first pair in list
+		L_apply_begin_search:
+			CMP(R3, IMM(0));
+			JUMP_EQ(L_apply_end_search);
+			MOV(R0, INDD(R0,2)); //next pair
+			DECR(R3);
+			JUMP(L_apply_begin_search);
+		L_apply_end_search:
+		PUSH(INDD(R0,1));
+		DECR(R2);
+		JUMP(L_apply_begin_push);
+	L_apply_end_push:
+	PUSH(R1); //pushing args size to stack
+	// done pushing args, now handling proc
+	MOV(R0, FPARG(2)); //proc
+	CMP(IND(R0) , T_CLOSURE);
+	JUMP_NE(L_apply_not_proc);
+	PUSH(INDD(R0,1));  // env
+	PUSH(FPARG(-1)); // return address from current frame
+	MOV(R2,FPARG(-2)); // save FP
+	//start overriding old frame
+	MOV(R3, R1);
+	ADD(R3, IMM(3)); //R3 holds loop size
+	MOV(R4, FPARG(1)); //number of old arguments
+	ADD(R4,IMM(1)); //R4 points to first old param from FPARG point of view
+	MOV(R5, STARG(1)); //number of new arguments
+	ADD(R5, IMM(1)); //R5 points to first new param from STARG point of view
+	L_apply_override:
+		MOV(R6, STARG(R5));
+		MOV(FPARG(R4),R6); //overriding
+		SUB(R3,1);
+		SUB(R4,1); //next old param
+		SUB(R5,1); //next new param
+		CMP(R3, IMM(0));
+		JUMP_NE(L_apply_override);
+	//end overriding
+	//complete the override by dropping unnecessary items from stack
+	DROP(IMM(7)); //apply had 7 values on stack before
+	MOV(FP,R2); //Restore old FP in preparation of JUMP
+	JUMPA(INDD(R0,2));  //code
+	L_apply_not_proc:
+	SHOW("Exception: attempt to apply non-procedure ", R0);
+	POP(FP);
+	RETURN;
+L_apply_cont:
+	MOV(IND(76), IMM(T_CLOSURE));
+	MOV(IND(77), IMM(864017));
+	MOV(IND(78), LABEL(L_prim_apply));
+#define SOB_PRIM_APPLY 76
 
-/* begin of generated code */ 
+/* begin of constant definition */ 
 
 
-//begin expr: (applic (fvar set-cdr!) ((applic (fvar cons) ((const #t) (const #t))) (const #f)))
+
+long mem_init[10] = { IMM(T_VOID), IMM(T_NIL), IMM(T_BOOL), IMM(0), IMM(T_BOOL), IMM(1), IMM(945311), IMM(1), IMM(945311), IMM(2)};
+int i;
+int n = sizeof(mem_init)/sizeof(mem_init[0]);
+						PUSH(n);
+						CALL(MALLOC);
+						DROP(1);
+						for(i=0;i<n;i++)
+						{
+  							MOV(INDD(R0,i),mem_init[i]);
+						}
+                        //begin expr: (applic (fvar apply) ((lambda-simple (x y) (pvar y 1)) (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
-MOV(R0, IMM(SOB_FALSE));
-PUSH(R0);
-//begin expr: (applic (fvar cons) ((const #t) (const #t)))
+//begin expr: (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
-MOV(R0, IMM(SOB_TRUE));
+//begin expr: (applic (fvar cons) ((const 2) (const ())))
+PUSH(IMM(SOB_NIL)); //MAGIC BOX
+MOV(R0,101);
 PUSH(R0);
-MOV(R0, IMM(SOB_TRUE));
+MOV(R0,108);
+PUSH(R0);
+PUSH(IMM(3)); //pushing args size to stack +1 for magic box
+// done pushing args, now handling proc
+MOV(R0, IMM(SOB_PRIM_CONS));
+CMP(INDD(R0,IMM(0)) , T_CLOSURE);
+JUMP_NE(LnotProcedure3);
+PUSH(INDD(R0,1));  // env
+CALLA(INDD(R0,2));  //code
+MOV(R1, STARG(0));
+ADD(R1, IMM(2));
+DROP (R1);
+JUMP(LprocExit3);
+LnotProcedure3:
+SHOW("Exception: attempt to apply non-procedure ", R0);
+LprocExit3:
+//end expr: (applic (fvar cons) ((const 2) (const ())))
+PUSH(R0);
+MOV(R0,106);
 PUSH(R0);
 PUSH(IMM(3)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
@@ -527,11 +699,73 @@ JUMP(LprocExit2);
 LnotProcedure2:
 SHOW("Exception: attempt to apply non-procedure ", R0);
 LprocExit2:
-//end expr: (applic (fvar cons) ((const #t) (const #t)))
+//end expr: (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))
+PUSH(R0);
+//begin expr: (lambda-simple (x y) (pvar y 1))
+//env-size: 0    params-size: 0
+PUSH(IMM(1)); //new env size: 1
+CALL(MALLOC);
+DROP(1);
+// R1 will hold new increased size env 
+MOV(R1,R0);
+MOV(R4, IMM(0));
+CMP(R4, IMM(0));
+JUMP_EQ(L_lambda_env_End1); 
+MOV(R2, FPARG(0)); //env
+MOV(R5, IMM(0));
+MOV(R6, IMM(1));
+L_lambda_env_Begin1:
+	MOV(INDD(R1,R6), INDD(R2,R5));
+	DECR(R4);
+	INCR(R5);
+	INCR(R6);
+	CMP(R4, IMM(0));
+	JUMP_NE(L_lambda_env_Begin1);
+L_lambda_env_End1:
+// handling with params 
+MOV(R4, IMM(0));
+CMP(R4, IMM(0));
+JUMP_EQ(L_lambda_args_End1); 
+PUSH(IMM(0));
+CALL(MALLOC);
+DROP(1);
+MOV(R3,R0);
+MOV(R5, IMM(0));
+L_lambda_args_Begin1:
+	MOV(R6,R5);
+	ADD(R6, IMM(2));
+	MOV(INDD(R3,R5), FPARG(R6));
+	DECR(R4);
+	INCR(R5);
+	CMP(R4, IMM(0));
+	JUMP_NE(L_lambda_args_Begin1);
+L_lambda_args_End1:
+MOV(INDD(R1,0), R3); //now R1 holds the environment
+// done handling with params 
+
+// build the closure
+PUSH(LABEL(LlambdaCont1));
+PUSH(R1);
+CALL(MAKE_SOB_CLOSURE);
+DROP(IMM(2));
+JUMP(LlambdaExit1);
+LlambdaCont1:
+PUSH(FP);
+MOV(FP,SP);
+//body code-gen
+//begin expr: (pvar y 1)
+MOV(R0, FPARG(2 + 1));
+//end expr: (pvar y 1)
+//end body code-gen
+POP(FP);
+RETURN;
+LlambdaExit1:
+
+//end expr: (lambda-simple (x y) (pvar y 1))
 PUSH(R0);
 PUSH(IMM(3)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_SET_CDR));
+MOV(R0, IMM(SOB_PRIM_APPLY));
 CMP(INDD(R0,IMM(0)) , T_CLOSURE);
 JUMP_NE(LnotProcedure1);
 PUSH(INDD(R0,1));  // env
@@ -543,7 +777,7 @@ JUMP(LprocExit1);
 LnotProcedure1:
 SHOW("Exception: attempt to apply non-procedure ", R0);
 LprocExit1:
-//end expr: (applic (fvar set-cdr!) ((applic (fvar cons) ((const #t) (const #t))) (const #f)))
+//end expr: (applic (fvar apply) ((lambda-simple (x y) (pvar y 1)) (applic (fvar cons) ((const 1) (applic (fvar cons) ((const 2) (const ())))))))
 SHOW("exit with ", R0);
 STOP_MACHINE;
 return 0;

@@ -1,1 +1,1 @@
-(make-vector 5 #t)
+(apply (lambda (x y) y) (cons 1 (cons 2 '())))

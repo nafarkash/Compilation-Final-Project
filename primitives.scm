@@ -458,26 +458,26 @@
 	(lambda ()
 		(string-append
 			"/* primitive set-car!  */" nl
-			"JUMP(L_set-car_cont);" nl
-			"L_prim_set-car:" nl
+			"JUMP(L_set_car_cont);" nl
+			"L_prim_set_car:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "MOV(R0, FPARG(2)); // the pair" nl
 			tab "CMP(IND(R0), T_PAIR);" nl
-			tab "JUMP_NE(L_set-car_ERROR);" nl
+			tab "JUMP_NE(L_set_car_ERROR);" nl
 			tab "MOV(R1, FPARG(3)); // new value" nl
 			tab "MOV(INDD(R0,1), R1); // set!" nl
 			tab "MOV(R0, SOB_VOID); //set-car! returns void" nl
-			tab "JUMP(L_set-car_Exit);" nl
-			"L_set-car_ERROR:" nl
-			tab "SHOW(\"Exception in set-car!, This is not a pair: \", R0);" nl 
-			"L_set-car_Exit:" nl
+			tab "JUMP(L_set_car_Exit);" nl
+			"L_set_car_ERROR:" nl
+			tab "SHOW(\"Exception in set_car!, This is not a pair: \", R0);" nl 
+			"L_set_car_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_set-car_cont:" nl
+			"L_set_car_cont:" nl
 			tab "MOV(IND(49), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(50), IMM(569917));" nl
-			tab "MOV(IND(51), LABEL(L_prim_set-car));" nl
+			tab "MOV(IND(51), LABEL(L_prim_set_car));" nl
 			"#define SOB_PRIM_SET_CAR 49" nl
 		)
 	)
@@ -487,26 +487,26 @@
 	(lambda ()
 		(string-append
 			"/* primitive set-cdr!  */" nl
-			"JUMP(L_set-cdr_cont);" nl
-			"L_prim_set-cdr:" nl
+			"JUMP(L_set_cdr_cont);" nl
+			"L_prim_set_cdr:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "MOV(R0, FPARG(2)); // the pair" nl
 			tab "CMP(IND(R0), T_PAIR);" nl
-			tab "JUMP_NE(L_set-cdr_ERROR);" nl
+			tab "JUMP_NE(L_set_cdr_ERROR);" nl
 			tab "MOV(R1, FPARG(3)); // new value" nl
 			tab "MOV(INDD(R0,2), R1); // set!" nl
 			tab "MOV(R0, SOB_VOID); //set-cdr! returns void" nl
-			tab "JUMP(L_set-cdr_Exit);" nl
-			"L_set-cdr_ERROR:" nl
-			tab "SHOW(\"Exception in set-cdr!, This is not a pair: \", R0);" nl 
-			"L_set-cdr_Exit:" nl
+			tab "JUMP(L_set_cdr_Exit);" nl
+			"L_set_cdr_ERROR:" nl
+			tab "SHOW(\"Exception in set_cdr!, This is not a pair: \", R0);" nl 
+			"L_set_cdr_Exit:" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
-			"L_set-cdr_cont:" nl
+			"L_set_cdr_cont:" nl
 			tab "MOV(IND(52), IMM(T_CLOSURE));" nl
 			tab "MOV(IND(53), IMM(510364));" nl
-			tab "MOV(IND(54), LABEL(L_prim_set-cdr));" nl
+			tab "MOV(IND(54), LABEL(L_prim_set_cdr));" nl
 			"#define SOB_PRIM_SET_CDR 52" nl
 		)
 	)
@@ -720,6 +720,111 @@
 			tab "MOV(IND(71), IMM(400183));" nl
 			tab "MOV(IND(72), LABEL(L_prim_makeVec));" nl
 			"#define SOB_PRIM_MAKE_VECTOR 70" nl
+		)
+	)
+)
+
+(define prim_remainder
+	(lambda ()
+		(string-append
+			"/* primitive remainder  */" nl
+			"JUMP(L_remainder_cont);" nl
+			"L_prim_remainder:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
+			tab "REM(R0, INDD(FPARG(3),1)); //use remainder proc with the second value as long value" nl
+			tab "PUSH(R0);" nl
+			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_remainder_cont:" nl
+			tab "MOV(IND(73), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(74), IMM(722858));" nl
+			tab "MOV(IND(75), LABEL(L_prim_remainder));" nl
+			"#define SOB_PRIM_REMAINDER 73" nl
+		)
+	)
+)
+
+(define prim_apply
+	(lambda ()
+		(string-append
+			"/* primitive apply */" nl
+			"JUMP(L_apply_cont);" nl
+			"L_prim_apply:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "/* determine list size */" nl
+			tab "MOV(R1,IMM(0)); //R1 will hold list size" nl
+			tab "MOV(R0, FPARG(3)); //list" nl
+			tab "L_apply_size_Begin:" nl
+			tab tab "CMP(IND(R0), T_PAIR);" nl
+			tab tab "JUMP_NE(L_apply_size_End);" nl
+			tab tab "INCR(R1);" nl
+			tab tab "MOV(R0, INDD(R0,2));" nl
+			tab tab "JUMP(L_apply_size_Begin);" nl
+			tab "L_apply_size_End:" nl
+			tab"/* done calculating list size, R1 holds it */" nl
+			tab "MOV(R2, R1); //save the size for later use" nl
+			tab "/* start pushing the list args to stack (last first) */" nl
+			tab "L_apply_begin_push:" nl
+			tab tab "CMP(R2, IMM(0));" nl
+			tab tab "JUMP_EQ(L_apply_end_push);" nl
+			tab tab "//loop that finds the current arg to push" nl
+			tab tab "MOV(R3, R2);" nl
+			tab tab "DECR(R3); //R3 holds number of inner iterations" nl
+			tab tab "MOV(R0, FPARG(3)); //first pair in list" nl
+			tab tab "L_apply_begin_search:" nl
+			tab tab tab "CMP(R3, IMM(0));" nl
+			tab tab tab "JUMP_EQ(L_apply_end_search);" nl
+			tab tab tab "MOV(R0, INDD(R0,2)); //next pair" nl
+			tab tab tab "DECR(R3);" nl
+			tab tab tab "JUMP(L_apply_begin_search);" nl
+			tab tab "L_apply_end_search:" nl
+			tab tab "PUSH(INDD(R0,1));" nl
+			tab tab "DECR(R2);" nl
+			tab tab "JUMP(L_apply_begin_push);" nl
+			tab "L_apply_end_push:" nl
+			tab "PUSH(R1); //pushing args size to stack" nl
+			tab "// done pushing args, now handling proc" nl
+			tab "MOV(R0, FPARG(2)); //proc" nl
+			tab "CMP(IND(R0) , T_CLOSURE);" nl
+			tab "JUMP_NE(L_apply_not_proc);" nl
+			tab "PUSH(INDD(R0,1));  // env" nl
+			tab "PUSH(FPARG(-1)); // return address from current frame" nl
+			tab "MOV(R2,FPARG(-2)); // save FP" nl
+			tab "//start overriding old frame" nl
+			tab "MOV(R3, R1);" nl
+			tab "ADD(R3, IMM(3)); //R3 holds loop size" nl
+			tab "MOV(R4, FPARG(1)); //number of old arguments" nl
+			tab "ADD(R4,IMM(1)); //R4 points to first old param from FPARG point of view" nl
+			tab "MOV(R5, STARG(1)); //number of new arguments" nl
+			tab "ADD(R5, IMM(1)); //R5 points to first new param from STARG point of view" nl
+			tab "L_apply_override:" nl
+			tab tab "MOV(R6, STARG(R5));" nl
+			tab tab "MOV(FPARG(R4),R6); //overriding" nl
+			tab tab "SUB(R3,1);" nl
+			tab tab "SUB(R4,1); //next old param" nl
+			tab tab "SUB(R5,1); //next new param" nl
+			tab tab "CMP(R3, IMM(0));" nl
+			tab tab "JUMP_NE(L_apply_override);" nl
+			tab "//end overriding" nl
+			;; we can determine the DROP value at compile time
+			tab "//complete the override by dropping unnecessary items from stack" nl
+			tab "DROP(IMM(7)); //apply had 7 values on stack before" nl
+			tab "MOV(FP,R2); //Restore old FP in preparation of JUMP" nl
+			tab "JUMPA(INDD(R0,2));  //code" nl
+			tab "L_apply_not_proc:" nl
+			tab "SHOW(\"Exception: attempt to apply non-procedure \", R0);" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_apply_cont:" nl
+			tab "MOV(IND(76), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(77), IMM(864017));" nl
+			tab "MOV(IND(78), LABEL(L_prim_apply));" nl
+			"#define SOB_PRIM_APPLY 76" nl
+
 		)
 	)
 )
