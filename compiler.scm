@@ -136,6 +136,7 @@
 			  (prim_apply)
 			  (prim_char->integer)
 			  (prim_integer->char)
+			  (prim_eq)
 			  nl
 			  "/* begin of constant definition */ " nl nl nl
 
@@ -868,6 +869,7 @@
 					((eq? var 'apply) (string-append "MOV(R0, IMM(SOB_PRIM_APPLY));" nl))
 					((eq? var 'char->integer) (string-append "MOV(R0, IMM(SOB_PRIM_CHAR_TO_INTEGER));" nl))
 					((eq? var 'integer->char) (string-append "MOV(R0, IMM(SOB_PRIM_INTEGER_TO_CHAR));" nl))
+					((eq? var 'eq?) (string-append "MOV(R0, IMM(SOB_PRIM_EQ));" nl))
 					(else (error 'code-gen-fvar
 						(format "variable ~s is not bound" var)))
 				)

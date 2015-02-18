@@ -1,1 +1,1 @@
-(make-vector 5)
+(eq? 1 1)

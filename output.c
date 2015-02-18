@@ -706,36 +706,88 @@ L_int_char_cont:
 	MOV(IND(83), IMM(414227));
 	MOV(IND(84), LABEL(L_prim_int_char));
 #define SOB_PRIM_INTEGER_TO_CHAR 82
+/* primitive eq?  */
+JUMP(L_eq_cont);
+L_prim_eq:
+	PUSH(FP);
+	MOV(FP, SP);
+	MOV(R0, FPARG(2)); //first expr
+	MOV(R1, FPARG(3)); //second expr
+	CMP(IND(R0),IND(R1)); //check type
+	JUMP_NE(L_eq_False);
+	CMP(IND(R0), T_VOID);
+	JUMP_EQ(L_eq_check_data);
+	CMP(IND(R0), T_NIL);
+	JUMP_EQ(L_eq_check_data);
+	CMP(IND(R0), T_BOOL);
+	JUMP_EQ(L_eq_check_data);
+	CMP(IND(R0), T_CHAR);
+	JUMP_EQ(L_eq_check_data);
+	CMP(IND(R0), T_INTEGER);
+	JUMP_EQ(L_eq_check_data);
+	CMP(IND(R0), T_CLOSURE);
+	JUMP_EQ(L_eq_check_address);
+	CMP(IND(R0), T_STRING);
+	JUMP_EQ(L_eq_check_address);
+	CMP(IND(R0), T_PAIR);
+	JUMP_EQ(L_eq_check_address);
+	CMP(IND(R0), T_VECTOR);
+	JUMP_EQ(L_eq_check_address);
+	CMP(IND(R0), T_SYMBOL);
+	JUMP_EQ(L_eq_check_symbol);
+L_eq_check_address:
+	CMP(R0,R1); //check by addresses
+	JUMP_NE(L_eq_False);
+	MOV(R0, SOB_TRUE);
+	JUMP(L_eq_Exit);
+L_eq_check_data:
+	CMP(INDD(R0,1), INDD(R1,1)); //check by data
+	JUMP_NE(L_eq_False);
+	MOV(R0, SOB_TRUE);
+	JUMP(L_eq_Exit);
+L_eq_check_symbol:
+L_eq_False:
+	MOV(R0, SOB_FALSE);
+L_eq_Exit:
+	POP(FP);
+	RETURN;
+L_eq_cont:
+	MOV(IND(85), IMM(T_CLOSURE));
+	MOV(IND(86), IMM(572874));
+	MOV(IND(87), LABEL(L_prim_eq));
+#define SOB_PRIM_EQ 85
 
 /* begin of constant definition */ 
 
 
-long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 5  };//constsnts array
-memcpy((void*) &IND(100), (void*) &mem_init, 8*WORD_SIZE);
+long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 1 , 945311 , 2  };//constsnts array
+memcpy((void*) &IND(100), (void*) &mem_init, 10*WORD_SIZE);
 
 
 /* start of generated code */
 
 
-//begin expr: (applic (fvar make-vector) ((const 5)))
+//begin expr: (applic (fvar eq?) ((const 1) (const 1)))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
 MOV(R0,106);
 PUSH(R0);
-PUSH(IMM(2)); //pushing args size to stack +1 for magic box
+MOV(R0,106);
+PUSH(R0);
+PUSH(IMM(3)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));
+MOV(R0, IMM(SOB_PRIM_EQ));
 CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure1);
+JUMP_NE(LnotProcedure4);
 PUSH(INDD(R0,1));  // env
 CALLA(INDD(R0,2));  //code
 MOV(R1, STARG(0));
 ADD(R1, IMM(2));
 DROP (R1);
-JUMP(LprocExit1);
-LnotProcedure1:
+JUMP(LprocExit4);
+LnotProcedure4:
 SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit1:
-//end expr: (applic (fvar make-vector) ((const 5)))
+LprocExit4:
+//end expr: (applic (fvar eq?) ((const 1) (const 1)))
 PUSH(R0);
 CALL(WRITE_SOB);
 CALL(NEWLINE);

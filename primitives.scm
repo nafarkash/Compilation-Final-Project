@@ -888,6 +888,64 @@
 	)
 )
 
+;;; TODO: eq? for symbol (compare strings)
+(define prim_eq
+	(lambda ()
+		(string-append
+			"/* primitive eq?  */" nl
+			"JUMP(L_eq_cont);" nl
+			"L_prim_eq:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R0, FPARG(2)); //first expr" nl
+			tab "MOV(R1, FPARG(3)); //second expr" nl
+			tab "CMP(IND(R0),IND(R1)); //check type" nl
+			tab "JUMP_NE(L_eq_False);" nl
+			tab "CMP(IND(R0), T_VOID);" nl
+			tab "JUMP_EQ(L_eq_check_data);" nl
+			tab "CMP(IND(R0), T_NIL);" nl
+			tab "JUMP_EQ(L_eq_check_data);" nl
+			tab "CMP(IND(R0), T_BOOL);" nl
+			tab "JUMP_EQ(L_eq_check_data);" nl
+			tab "CMP(IND(R0), T_CHAR);" nl
+			tab "JUMP_EQ(L_eq_check_data);" nl
+			tab "CMP(IND(R0), T_INTEGER);" nl
+			tab "JUMP_EQ(L_eq_check_data);" nl
+			tab "CMP(IND(R0), T_CLOSURE);" nl
+			tab "JUMP_EQ(L_eq_check_address);" nl
+			tab "CMP(IND(R0), T_STRING);" nl
+			tab "JUMP_EQ(L_eq_check_address);" nl
+			tab "CMP(IND(R0), T_PAIR);" nl
+			tab "JUMP_EQ(L_eq_check_address);" nl
+			tab "CMP(IND(R0), T_VECTOR);" nl
+			tab "JUMP_EQ(L_eq_check_address);" nl
+			tab "CMP(IND(R0), T_SYMBOL);" nl
+			tab "JUMP_EQ(L_eq_check_symbol);" nl
+			"L_eq_check_address:" nl
+			tab "CMP(R0,R1); //check by addresses" nl
+			tab "JUMP_NE(L_eq_False);" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "JUMP(L_eq_Exit);" nl
+			"L_eq_check_data:" nl
+			tab "CMP(INDD(R0,1), INDD(R1,1)); //check by data" nl
+			tab "JUMP_NE(L_eq_False);" nl
+			tab "MOV(R0, SOB_TRUE);" nl
+			tab "JUMP(L_eq_Exit);" nl
+			"L_eq_check_symbol:" nl
+			"L_eq_False:" nl
+			tab "MOV(R0, SOB_FALSE);" nl
+			"L_eq_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_eq_cont:" nl
+			tab "MOV(IND(85), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(86), IMM(572874));" nl
+			tab "MOV(IND(87), LABEL(L_prim_eq));" nl
+			"#define SOB_PRIM_EQ 85" nl
+		)
+	)
+)
+
 ;;; using support-code.scm we need to implement bin+, bin-, bin*, bin/, bin<, bin=
 ;;TODO: with the entire procs, replace the memory value
 (define prim_bin+
