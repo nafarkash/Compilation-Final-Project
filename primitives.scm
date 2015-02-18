@@ -298,7 +298,7 @@
 			"L_prim_zero:" nl
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
-			tab "PUSH(FPARG(2)); //param" nl
+			tab "PUSH(INDD(FPARG(2),1)); //param" nl
 			tab "CALL(IS_ZERO);" nl
 			tab "DROP(1);" nl
 			tab "CMP(R0, IMM(1));" nl
@@ -411,7 +411,9 @@
 			tab "MOV(R0, FPARG(2)); //param" nl
 			tab "CMP(IND(R0), T_STRING);" nl
 			tab "JUMP_NE(L_strLength_ERROR);" nl
-			tab "MOV(R0, INDD(R0,1)); //second memory cell is the size" nl
+			tab "PUSH(INDD(R0,1)); //second memory cell is the size" nl
+			tab "CALL(MAKE_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
 			tab "JUMP(L_strLenth_Exit);" nl
 			"L_strLength_ERROR:" nl
 			tab "SHOW(\"Exception in string-length, This is not a string: \", R0);" nl 
@@ -438,7 +440,9 @@
 			tab "MOV(R0, FPARG(2)); //param" nl
 			tab "CMP(IND(R0), T_VECTOR);" nl
 			tab "JUMP_NE(L_vecLength_ERROR);" nl
-			tab "MOV(R0, INDD(R0,1)); //second memory cell is the size" nl
+			tab "PUSH(INDD(R0,1)); //second memory cell is the size" nl
+			tab "CALL(MAKE_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
 			tab "JUMP(L_vecLenth_Exit);" nl
 			"L_vecLength_ERROR:" nl
 			tab "SHOW(\"Exception in vector-length, This is not a vector: \", R0);" nl 
@@ -585,8 +589,11 @@
 			tab "MOV(R0, FPARG(2)); //string" nl
 			tab "CMP(IND(R0), T_STRING);" nl
 			tab "JUMP_NE(L_strRef_ERROR);" nl
-			tab "MOV(R1, FPARG(3)); //positin in string" nl
-			tab "MOV(R0, INDD(R0,R1)); //assuming R1 holds valid position" nl
+			tab "MOV(R1, INDD(FPARG(3),1));" nl
+			tab "ADD(R1,IMM(2));  //positin in string" nl
+			tab "PUSH(INDD(R0,R1)); //assuming R1 holds valid position" nl
+			tab "CALL(MAKE_SOB_CHAR);" nl
+			tab "DROP(1);" nl
 			tab "JUMP(L_strRef_Exit);" nl
 			"L_strRef_ERROR:" nl
 			tab "SHOW(\"Exception in string-ref, This is not a string: \", R0);" nl 
@@ -613,7 +620,8 @@
 			tab "MOV(R0, FPARG(2)); //vector" nl
 			tab "CMP(IND(R0), T_VECTOR);" nl
 			tab "JUMP_NE(L_vecRef_ERROR);" nl
-			tab "MOV(R1, FPARG(3)); //positin in vector" nl
+			tab "MOV(R1, INDD(FPARG(3),1));" nl
+			tab "ADD(R1, IMM(2)); //positin in vector" nl
 			tab "MOV(R0, INDD(R0,R1)); //assuming R1 holds valid position" nl
 			tab "JUMP(L_vecRef_Exit);" nl
 			"L_vecRef_ERROR:" nl
@@ -640,11 +648,11 @@
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "MOV(R0, FPARG(1)); //number of args on stack" nl
-			tab "MOV(R1, FPARG(2)); //size of new string" nl
+			tab "MOV(R1, INDD(FPARG(2),1)); //size of new string" nl
 			tab "CMP(R0, IMM(1));" nl
 			tab "JUMP_EQ(L_makeStr_oneArg); //only one arg, make-string with unspecified content" nl
 			"/* didn't jump, fill the string with the second arg */" nl
-			tab "MOV(R2, FPARG(3)); //the char" nl
+			tab "MOV(R2, INDD(FPARG(3),1)); //the char" nl
 			tab "CMP(R1, IMM(0));" nl
 			tab "JUMP_EQ(L_makeStr_Exit);" nl
 			"L_makeStr_twoArgs_BeginPush:" nl
@@ -657,15 +665,16 @@
 			tab "CMP(R1, IMM(0));" nl
 			tab "JUMP_EQ(L_makeStr_Exit);" nl
 			"L_makeStr_oneArg_BeginPush:" nl
-			tab "PUSH(SOB_VOID);" nl
+			tab "PUSH(IMM(0));" nl
 			tab "DECR(R1);" nl
 			tab "CMP(R1, IMM(0));" nl
 			tab "JUMP_NE(L_makeStr_oneArg_BeginPush);" nl
 			"L_makeStr_Exit:" nl
 			"/* done pushing the string content */" nl
-			tab "PUSH(FPARG(2)); //size of string"
+			tab "MOV(R1, FPARG(2));" nl
+			tab "PUSH(INDD(R1,1)); //size of string" nl
 			tab "CALL(MAKE_SOB_STRING);" nl
-			tab "DROP(FPARG(2) + 1); //drop unnecessary values from stack" nl
+			tab "DROP(INDD(FPARG(2),1) + 1); //drop unnecessary values from stack" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
 			"L_makeStr_cont:" nl
@@ -687,7 +696,8 @@
 			tab "PUSH(FP);" nl
 			tab "MOV(FP, SP);" nl
 			tab "MOV(R0, FPARG(1)); //number of args on stack" nl
-			tab "MOV(R1, FPARG(2)); //size of new vector" nl
+			tab "DECR(R0); //don't count magic box" nl
+			tab "MOV(R1, INDD(FPARG(2),1)); //size of new vector" nl
 			tab "CMP(R0, IMM(1));" nl
 			tab "JUMP_EQ(L_makeVec_oneArg); //only one arg, make-vector with unspecified content" nl
 			"/* didn't jump, fill the vector with the second arg */" nl
@@ -704,15 +714,19 @@
 			tab "CMP(R1, IMM(0));" nl
 			tab "JUMP_EQ(L_makeVec_Exit);" nl
 			"L_makeVec_oneArg_BeginPush:" nl
-			tab "PUSH(SOB_VOID);" nl
+			tab "PUSH(IMM(0));" nl
+			tab "CALL(MAKE_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
+			tab "PUSH(R0)" nl
 			tab "DECR(R1);" nl
 			tab "CMP(R1, IMM(0));" nl
 			tab "JUMP_NE(L_makeVec_oneArg_BeginPush);" nl
 			"L_makeVec_Exit:" nl
 			"/* done pushing the vector content */" nl
-			tab "PUSH(FPARG(2)); //size of vector"
+			tab "MOV(R1, FPARG(2));" nl
+			tab "PUSH(INDD(R1,1)); //size of vector" nl
 			tab "CALL(MAKE_SOB_VECTOR);" nl
-			tab "DROP(FPARG(2) + 1); //drop unnecessary values from stack" nl
+			tab "DROP(INDD(FPARG(2),1) + 1); //drop unnecessary values from stack" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
 			"L_makeVec_cont:" nl
@@ -735,7 +749,8 @@
 			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
 			tab "REM(R0, INDD(FPARG(3),1)); //use remainder proc with the second value as long value" nl
 			tab "PUSH(R0);" nl
-			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "CALL(MAKE_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
 			"L_remainder_cont:" nl
@@ -825,6 +840,50 @@
 			tab "MOV(IND(78), LABEL(L_prim_apply));" nl
 			"#define SOB_PRIM_APPLY 76" nl
 
+		)
+	)
+)
+
+(define prim_char->integer
+	(lambda ()
+		(string-append
+			"/* primitive char->integer  */" nl
+			"JUMP(L_char_int_cont);" nl
+			"L_prim_char_int:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(INDD(FPARG(2),1)); //the char" nl
+			tab "CALL(MAKE_SOB_INTEGER);" nl
+			tab "DROP(1);" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_char_int_cont:" nl
+			tab "MOV(IND(79), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(80), IMM(508854));" nl
+			tab "MOV(IND(81), LABEL(L_prim_char_int));" nl
+			"#define SOB_PRIM_CHAR_TO_INTEGER 79" nl
+		)
+	)
+)
+
+(define prim_integer->char
+	(lambda ()
+		(string-append
+			"/* primitive integer->char  */" nl
+			"JUMP(L_int_char_cont);" nl
+			"L_prim_int_char:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "PUSH(INDD(FPARG(2),1)); //the integer" nl
+			tab "CALL(MAKE_SOB_CHAR);" nl
+			tab "DROP(1);" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_int_char_cont:" nl
+			tab "MOV(IND(82), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(83), IMM(414227));" nl
+			tab "MOV(IND(84), LABEL(L_prim_int_char));" nl
+			"#define SOB_PRIM_INTEGER_TO_CHAR 82" nl
 		)
 	)
 )

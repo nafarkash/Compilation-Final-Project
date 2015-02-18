@@ -1,1 +1,1 @@
-(cons 1 2)
+(make-vector 5)

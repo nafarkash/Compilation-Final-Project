@@ -3,6 +3,7 @@
 /* change to 0 for no debug info to be printed: */
 #define DO_SHOW 1
 #include "arch/cisc.h"
+#include "arch/debug_macros.h"
 int main()
 {
 START_MACHINE;
@@ -246,7 +247,7 @@ JUMP(L_zero_cont);
 L_prim_zero:
 	PUSH(FP);
 	MOV(FP, SP);
-	PUSH(FPARG(2)); //param
+	PUSH(INDD(FPARG(2),1)); //param
 	CALL(IS_ZERO);
 	DROP(1);
 	CMP(R0, IMM(1));
@@ -331,7 +332,9 @@ L_prim_strLength:
 	MOV(R0, FPARG(2)); //param
 	CMP(IND(R0), T_STRING);
 	JUMP_NE(L_strLength_ERROR);
-	MOV(R0, INDD(R0,1)); //second memory cell is the size
+	PUSH(INDD(R0,1)); //second memory cell is the size
+	CALL(MAKE_SOB_INTEGER);
+	DROP(1);
 	JUMP(L_strLenth_Exit);
 L_strLength_ERROR:
 	SHOW("Exception in string-length, This is not a string: ", R0);
@@ -351,7 +354,9 @@ L_prim_vecLength:
 	MOV(R0, FPARG(2)); //param
 	CMP(IND(R0), T_VECTOR);
 	JUMP_NE(L_vecLength_ERROR);
-	MOV(R0, INDD(R0,1)); //second memory cell is the size
+	PUSH(INDD(R0,1)); //second memory cell is the size
+	CALL(MAKE_SOB_INTEGER);
+	DROP(1);
 	JUMP(L_vecLenth_Exit);
 L_vecLength_ERROR:
 	SHOW("Exception in vector-length, This is not a vector: ", R0);
@@ -459,8 +464,11 @@ L_prim_strRef:
 	MOV(R0, FPARG(2)); //string
 	CMP(IND(R0), T_STRING);
 	JUMP_NE(L_strRef_ERROR);
-	MOV(R1, FPARG(3)); //positin in string
-	MOV(R0, INDD(R0,R1)); //assuming R1 holds valid position
+	MOV(R1, INDD(FPARG(3),1));
+	ADD(R1,IMM(2));  //positin in string
+	PUSH(INDD(R0,R1)); //assuming R1 holds valid position
+	CALL(MAKE_SOB_CHAR);
+	DROP(1);
 	JUMP(L_strRef_Exit);
 L_strRef_ERROR:
 	SHOW("Exception in string-ref, This is not a string: ", R0);
@@ -480,7 +488,8 @@ L_prim_vecRef:
 	MOV(R0, FPARG(2)); //vector
 	CMP(IND(R0), T_VECTOR);
 	JUMP_NE(L_vecRef_ERROR);
-	MOV(R1, FPARG(3)); //positin in vector
+	MOV(R1, INDD(FPARG(3),1));
+	ADD(R1, IMM(2)); //positin in vector
 	MOV(R0, INDD(R0,R1)); //assuming R1 holds valid position
 	JUMP(L_vecRef_Exit);
 L_vecRef_ERROR:
@@ -499,11 +508,11 @@ L_prim_makeStr:
 	PUSH(FP);
 	MOV(FP, SP);
 	MOV(R0, FPARG(1)); //number of args on stack
-	MOV(R1, FPARG(2)); //size of new string
+	MOV(R1, INDD(FPARG(2),1)); //size of new string
 	CMP(R0, IMM(1));
 	JUMP_EQ(L_makeStr_oneArg); //only one arg, make-string with unspecified content
 /* didn't jump, fill the string with the second arg */
-	MOV(R2, FPARG(3)); //the char
+	MOV(R2, INDD(FPARG(3),1)); //the char
 	CMP(R1, IMM(0));
 	JUMP_EQ(L_makeStr_Exit);
 L_makeStr_twoArgs_BeginPush:
@@ -516,14 +525,16 @@ L_makeStr_oneArg:
 	CMP(R1, IMM(0));
 	JUMP_EQ(L_makeStr_Exit);
 L_makeStr_oneArg_BeginPush:
-	PUSH(SOB_VOID);
+	PUSH(IMM(0));
 	DECR(R1);
 	CMP(R1, IMM(0));
 	JUMP_NE(L_makeStr_oneArg_BeginPush);
 L_makeStr_Exit:
 /* done pushing the string content */
-	PUSH(FPARG(2)); //size of string	CALL(MAKE_SOB_STRING);
-	DROP(FPARG(2) + 1); //drop unnecessary values from stack
+	MOV(R1, FPARG(2));
+	PUSH(INDD(R1,1)); //size of string
+	CALL(MAKE_SOB_STRING);
+	DROP(INDD(FPARG(2),1) + 1); //drop unnecessary values from stack
 	POP(FP);
 	RETURN;
 L_makeStr_cont:
@@ -537,7 +548,8 @@ L_prim_makeVec:
 	PUSH(FP);
 	MOV(FP, SP);
 	MOV(R0, FPARG(1)); //number of args on stack
-	MOV(R1, FPARG(2)); //size of new vector
+	DECR(R0); //don't count magic box
+	MOV(R1, INDD(FPARG(2),1)); //size of new vector
 	CMP(R0, IMM(1));
 	JUMP_EQ(L_makeVec_oneArg); //only one arg, make-vector with unspecified content
 /* didn't jump, fill the vector with the second arg */
@@ -554,14 +566,19 @@ L_makeVec_oneArg:
 	CMP(R1, IMM(0));
 	JUMP_EQ(L_makeVec_Exit);
 L_makeVec_oneArg_BeginPush:
-	PUSH(SOB_VOID);
+	PUSH(IMM(0));
+	CALL(MAKE_SOB_INTEGER);
+	DROP(1);
+	PUSH(R0)
 	DECR(R1);
 	CMP(R1, IMM(0));
 	JUMP_NE(L_makeVec_oneArg_BeginPush);
 L_makeVec_Exit:
 /* done pushing the vector content */
-	PUSH(FPARG(2)); //size of vector	CALL(MAKE_SOB_VECTOR);
-	DROP(FPARG(2) + 1); //drop unnecessary values from stack
+	MOV(R1, FPARG(2));
+	PUSH(INDD(R1,1)); //size of vector
+	CALL(MAKE_SOB_VECTOR);
+	DROP(INDD(FPARG(2),1) + 1); //drop unnecessary values from stack
 	POP(FP);
 	RETURN;
 L_makeVec_cont:
@@ -569,6 +586,23 @@ L_makeVec_cont:
 	MOV(IND(71), IMM(400183));
 	MOV(IND(72), LABEL(L_prim_makeVec));
 #define SOB_PRIM_MAKE_VECTOR 70
+/* primitive remainder  */
+JUMP(L_remainder_cont);
+L_prim_remainder:
+	PUSH(FP);
+	MOV(FP, SP);
+	MOV(R0, INDD(FPARG(2),1)); //first value as long value
+	REM(R0, INDD(FPARG(3),1)); //use remainder proc with the second value as long value
+	PUSH(R0);
+	CALL(MAKE_SOB_INTEGER);
+	DROP(1);
+	POP(FP);
+	RETURN;
+L_remainder_cont:
+	MOV(IND(73), IMM(T_CLOSURE));
+	MOV(IND(74), IMM(722858));
+	MOV(IND(75), LABEL(L_prim_remainder));
+#define SOB_PRIM_REMAINDER 73
 /* primitive apply */
 JUMP(L_apply_cont);
 L_prim_apply:
@@ -642,38 +676,66 @@ L_apply_cont:
 	MOV(IND(77), IMM(864017));
 	MOV(IND(78), LABEL(L_prim_apply));
 #define SOB_PRIM_APPLY 76
+/* primitive char->integer  */
+JUMP(L_char_int_cont);
+L_prim_char_int:
+	PUSH(FP);
+	MOV(FP, SP);
+	PUSH(INDD(FPARG(2),1)); //the char
+	CALL(MAKE_SOB_INTEGER);
+	DROP(1);
+	POP(FP);
+	RETURN;
+L_char_int_cont:
+	MOV(IND(79), IMM(T_CLOSURE));
+	MOV(IND(80), IMM(508854));
+	MOV(IND(81), LABEL(L_prim_char_int));
+#define SOB_PRIM_CHAR_TO_INTEGER 79
+/* primitive integer->char  */
+JUMP(L_int_char_cont);
+L_prim_int_char:
+	PUSH(FP);
+	MOV(FP, SP);
+	PUSH(INDD(FPARG(2),1)); //the integer
+	CALL(MAKE_SOB_CHAR);
+	DROP(1);
+	POP(FP);
+	RETURN;
+L_int_char_cont:
+	MOV(IND(82), IMM(T_CLOSURE));
+	MOV(IND(83), IMM(414227));
+	MOV(IND(84), LABEL(L_prim_int_char));
+#define SOB_PRIM_INTEGER_TO_CHAR 82
 
 /* begin of constant definition */ 
 
 
-long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 1 , 945311 , 2  };//constsnts array
-memcpy((void*) &IND(100), (void*) &mem_init, 10*WORD_SIZE);
+long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 5  };//constsnts array
+memcpy((void*) &IND(100), (void*) &mem_init, 8*WORD_SIZE);
 
 
 /* start of generated code */
 
 
-//begin expr: (applic (fvar cons) ((const 1) (const 2)))
+//begin expr: (applic (fvar make-vector) ((const 5)))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
-MOV(R0,108);
-PUSH(R0);
 MOV(R0,106);
 PUSH(R0);
-PUSH(IMM(3)); //pushing args size to stack +1 for magic box
+PUSH(IMM(2)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_CONS));
+MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));
 CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure7);
+JUMP_NE(LnotProcedure1);
 PUSH(INDD(R0,1));  // env
 CALLA(INDD(R0,2));  //code
 MOV(R1, STARG(0));
 ADD(R1, IMM(2));
 DROP (R1);
-JUMP(LprocExit7);
-LnotProcedure7:
+JUMP(LprocExit1);
+LnotProcedure1:
 SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit7:
-//end expr: (applic (fvar cons) ((const 1) (const 2)))
+LprocExit1:
+//end expr: (applic (fvar make-vector) ((const 5)))
 PUSH(R0);
 CALL(WRITE_SOB);
 CALL(NEWLINE);

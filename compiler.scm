@@ -90,6 +90,7 @@
 			"#define DO_SHOW 1" nl
 
 			"#include \"arch/cisc.h\"" nl
+			"#include \"arch/debug_macros.h\"" nl
 
 			"int main()" nl
 			"{" nl
@@ -131,7 +132,10 @@
 			  (prim_vector-ref)
 			  (prim_make-string)
 			  (prim_make-vector)
+			  (prim_remainder)
 			  (prim_apply)
+			  (prim_char->integer)
+			  (prim_integer->char)
 			  nl
 			  "/* begin of constant definition */ " nl nl nl
 
@@ -199,7 +203,7 @@
 				(let* ((indx (- (length *ct*) (length doExist))))
 					(car (list-ref *ct* indx)))
 				(let* ((type (cond 
-								((symbol? e) `(,T_STRING ,(string-length (symbol->string e)) ,@(map char->integer (string->list (symbol->string e)))))
+								((symbol? e) `(,T_SYMBOL ,(string-length (symbol->string e)) ,@(map char->integer (string->list (symbol->string e)))))
 								((integer? e) `(,T_INTEGER ,e))                      
 								((string? e) `(,T_STRING ,(string-length e) ,@(map char->integer (string->list e))))
 								((vector? e) `(,T_VECTOR ,(vector-length e) ,@(map findAddConst (vector->list e))))
@@ -275,10 +279,16 @@
 	)
 )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;; indentation handler ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;; has problem with large input ;;;;;;;;;;;;;
+;;;;;;;;;;;;;;; use with care! ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define tab-stitcher 
 	(lambda (str) str)
 )
-;; indentation handler
+
 ;(define tab-stitcher
 ;	(lambda (str)
 ;		(letrec ((tab-pusher
@@ -299,6 +309,8 @@
 ;		))
 ;	)
 ;)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define code-gen-lambda-simple
 	(lambda (e params-size env-size)
@@ -852,7 +864,10 @@
 					((eq? var 'vector-ref) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_REF));" nl))
 					((eq? var 'make-string) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_STRING));" nl))
 					((eq? var 'make-vector) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));" nl))
+					((eq? var 'remainder) (string-append "MOV(R0, IMM(SOB_PRIM_REMAINDER));" nl))
 					((eq? var 'apply) (string-append "MOV(R0, IMM(SOB_PRIM_APPLY));" nl))
+					((eq? var 'char->integer) (string-append "MOV(R0, IMM(SOB_PRIM_CHAR_TO_INTEGER));" nl))
+					((eq? var 'integer->char) (string-append "MOV(R0, IMM(SOB_PRIM_INTEGER_TO_CHAR));" nl))
 					(else (error 'code-gen-fvar
 						(format "variable ~s is not bound" var)))
 				)
