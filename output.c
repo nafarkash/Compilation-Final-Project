@@ -760,37 +760,142 @@ L_eq_cont:
 /* begin of constant definition */ 
 
 
-long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 1 , 945311 , 2  };//constsnts array
-memcpy((void*) &IND(100), (void*) &mem_init, 10*WORD_SIZE);
+long mem_init[] = { 937610 , 722689 , 741553 , 0 , 741553 , 1 , 945311 , 2 , 945311 , 1 , 945311 , 4 , 945311 , 3 , 945311 , 5  };//constsnts array
+memcpy((void*) &IND(100), (void*) &mem_init, 16*WORD_SIZE);
 
 
 /* start of generated code */
 
 
-//begin expr: (applic (fvar eq?) ((const 1) (const 1)))
+MOV(R0,108);
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont16);
+NOP;
+JUMP(L_print_exit16);
+L_print_cont16:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit16:
+MOV(R0,106);
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont15);
+NOP;
+JUMP(L_print_exit15);
+L_print_cont15:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit15:
+//begin expr: (if3 (const #f) (const #f) (const #<void>))
+MOV(R0,102);
+
+CMP(R0, SOB_FALSE);
+JUMP_EQ(Lif3else4);
+MOV(R0,102);
+
+JUMP(Lif3exit4);
+Lif3else4:
+MOV(R0,100);
+
+Lif3exit4:
+//end expr: (if3 (const #f) (const #f) (const #<void>))
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont14);
+NOP;
+JUMP(L_print_exit14);
+L_print_cont14:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit14:
+MOV(R0,112);
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont13);
+NOP;
+JUMP(L_print_exit13);
+L_print_cont13:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit13:
+MOV(R0,110);
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont12);
+NOP;
+JUMP(L_print_exit12);
+L_print_cont12:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit12:
+//begin expr: (applic (fvar set-car!) ((applic (fvar cons) ((const 1) (const 2))) (const 3)))
+PUSH(IMM(SOB_NIL)); //MAGIC BOX
+MOV(R0,112);
+PUSH(R0);
+//begin expr: (applic (fvar cons) ((const 1) (const 2)))
 PUSH(IMM(SOB_NIL)); //MAGIC BOX
 MOV(R0,106);
 PUSH(R0);
-MOV(R0,106);
+MOV(R0,108);
 PUSH(R0);
 PUSH(IMM(3)); //pushing args size to stack +1 for magic box
 // done pushing args, now handling proc
-MOV(R0, IMM(SOB_PRIM_EQ));
+MOV(R0, IMM(SOB_PRIM_CONS));
 CMP(INDD(R0,IMM(0)) , T_CLOSURE);
-JUMP_NE(LnotProcedure4);
+JUMP_NE(LnotProcedure2);
 PUSH(INDD(R0,1));  // env
 CALLA(INDD(R0,2));  //code
 MOV(R1, STARG(0));
 ADD(R1, IMM(2));
 DROP (R1);
-JUMP(LprocExit4);
-LnotProcedure4:
+JUMP(LprocExit2);
+LnotProcedure2:
 SHOW("Exception: attempt to apply non-procedure ", R0);
-LprocExit4:
-//end expr: (applic (fvar eq?) ((const 1) (const 1)))
+LprocExit2:
+//end expr: (applic (fvar cons) ((const 1) (const 2)))
+PUSH(R0);
+PUSH(IMM(3)); //pushing args size to stack +1 for magic box
+// done pushing args, now handling proc
+MOV(R0, IMM(SOB_PRIM_SET_CAR));
+CMP(INDD(R0,IMM(0)) , T_CLOSURE);
+JUMP_NE(LnotProcedure1);
+PUSH(INDD(R0,1));  // env
+CALLA(INDD(R0,2));  //code
+MOV(R1, STARG(0));
+ADD(R1, IMM(2));
+DROP (R1);
+JUMP(LprocExit1);
+LnotProcedure1:
+SHOW("Exception: attempt to apply non-procedure ", R0);
+LprocExit1:
+//end expr: (applic (fvar set-car!) ((applic (fvar cons) ((const 1) (const 2))) (const 3)))
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont11);
+NOP;
+JUMP(L_print_exit11);
+L_print_cont11:
 PUSH(R0);
 CALL(WRITE_SOB);
 CALL(NEWLINE);
-DROP(1);STOP_MACHINE;
+DROP(1);
+L_print_exit11:
+MOV(R0,114);
+CMP(IND(R0), T_VOID);
+JUMP_NE(L_print_cont10);
+NOP;
+JUMP(L_print_exit10);
+L_print_cont10:
+PUSH(R0);
+CALL(WRITE_SOB);
+CALL(NEWLINE);
+DROP(1);
+L_print_exit10:
+STOP_MACHINE;
 return 0;
 }

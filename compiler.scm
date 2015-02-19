@@ -48,6 +48,8 @@
 (define ^label-notProc (^^label "LnotProcedure"))
 (define ^label-applicExit (^^label "LprocExit"))
 (define ^label-applicOverride (^^label "LprocOverride"))
+(define ^label-printCont (^^label "L_print_cont"))
+(define ^label-printExit (^^label "L_print_exit"))
 (define nl (list->string (list #\newline)))
 (define tab (list->string (list #\tab)))
 
@@ -79,6 +81,26 @@
       (close-output-port p)
     )))
 
+(define print-value
+	(lambda (str)
+		(let ((label-cont (^label-printCont))
+			  (label-exit (^label-printExit)))
+			(string-append
+				str
+				"CMP(IND(R0), T_VOID);" nl
+				"JUMP_NE(" label-cont ");" nl
+				"NOP;" nl
+				"JUMP(" label-exit ");" nl
+				label-cont ":" nl
+				"PUSH(R0);" nl
+	  			"CALL(WRITE_SOB);" nl
+	  			"CALL(NEWLINE);" nl
+	  			"DROP(1);" nl
+	  			label-exit ":" nl
+			)
+		)
+	)
+)
 
 (define prolog
 	(lambda ()
@@ -228,10 +250,6 @@
 (define epilog
 	(lambda ()
 		(string-append
-  			"PUSH(R0);" nl
-  			"CALL(WRITE_SOB);" nl
-  			"CALL(NEWLINE);" nl
-  			"DROP(1);"
 			 "STOP_MACHINE;" nl
   			"return 0;" nl
 			"}" nl
@@ -248,7 +266,8 @@
 			(parsed (string-append
 						(prolog)
 						(consts)
-						(apply string-append (map (lambda (e) (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0)) text))
+						(apply string-append (map (lambda (e) 
+												(print-value (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0))) text))
 						(epilog)
 					)))
 		(write2File parsed output))
