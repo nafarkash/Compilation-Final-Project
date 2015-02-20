@@ -528,8 +528,9 @@
 			tab "MOV(R0, FPARG(2)); //vector" nl
 			tab "CMP(IND(R0), T_VECTOR);" nl
 			tab "JUMP_NE(L_vecSet_ERROR);" nl
-			tab "MOV(R1, FPARG(3)); //position in vector" nl
-			tab "MOV(R2, FPARG(4)); //new value"
+			tab "MOV(R1, INDD(FPARG(3),1));" nl
+			tab "ADD(R1,IMM(2));  //positin in vector" nl
+			tab "MOV(R2, FPARG(4)); //new value" nl
 			tab "MOV(INDD(R0,R1), R2); // set!" nl
 			tab "MOV(R0, SOB_VOID); //vector-set! returns void" nl
 			tab "JUMP(L_vecSet_Exit);" nl
@@ -559,8 +560,9 @@
 			tab "MOV(R0, FPARG(2)); //string" nl
 			tab "CMP(IND(R0), T_STRING);" nl
 			tab "JUMP_NE(L_strSet_ERROR);" nl
-			tab "MOV(R1, FPARG(3)); //position in string" nl
-			tab "MOV(R2, FPARG(4)); //new value"
+			tab "MOV(R1, INDD(FPARG(3),1));" nl
+			tab "ADD(R1,IMM(2));  //positin in string" nl
+			tab "MOV(R2, INDD(FPARG(4),1)); //new value" nl
 			tab "MOV(INDD(R0,R1), R2); // set!" nl
 			tab "MOV(R0, SOB_VOID); //string-set! returns void" nl
 			tab "JUMP(L_strSet_Exit);" nl
@@ -782,7 +784,9 @@
 			tab "L_apply_size_End:" nl
 			tab"/* done calculating list size, R1 holds it */" nl
 			tab "MOV(R2, R1); //save the size for later use" nl
+			tab "INCR(R1); //include the magic box" nl
 			tab "/* start pushing the list args to stack (last first) */" nl
+			tab "PUSH(IMM(SOB_NIL)); //MAGIC BOX" nl
 			tab "L_apply_begin_push:" nl
 			tab tab "CMP(R2, IMM(0));" nl
 			tab tab "JUMP_EQ(L_apply_end_push);" nl
@@ -796,7 +800,7 @@
 			tab tab tab "MOV(R0, INDD(R0,2)); //next pair" nl
 			tab tab tab "DECR(R3);" nl
 			tab tab tab "JUMP(L_apply_begin_search);" nl
-			tab tab "L_apply_end_search:" nl
+			tab tab "L_apply_end_search:" nl	
 			tab tab "PUSH(INDD(R0,1));" nl
 			tab tab "DECR(R2);" nl
 			tab tab "JUMP(L_apply_begin_push);" nl
@@ -889,6 +893,7 @@
 )
 
 ;;; TODO: eq? for symbol (compare strings)
+;;; for now eq? for symbol via addresses
 (define prim_eq
 	(lambda ()
 		(string-append
@@ -920,7 +925,7 @@
 			tab "CMP(IND(R0), T_VECTOR);" nl
 			tab "JUMP_EQ(L_eq_check_address);" nl
 			tab "CMP(IND(R0), T_SYMBOL);" nl
-			tab "JUMP_EQ(L_eq_check_symbol);" nl
+			tab "JUMP_EQ(L_eq_check_address);" nl
 			"L_eq_check_address:" nl
 			tab "CMP(R0,R1); //check by addresses" nl
 			tab "JUMP_NE(L_eq_False);" nl
@@ -946,152 +951,389 @@
 	)
 )
 
-;;; using support-code.scm we need to implement bin+, bin-, bin*, bin/, bin<, bin=
-;;TODO: with the entire procs, replace the memory value
-(define prim_bin+
+(define prim_symbol->string
 	(lambda ()
 		(string-append
-			"/* primitive binary plus (+)  */" nl
+			"/* primitive symbol->string */" nl
+			"JUMP(L_symbol_to_string_cont);" nl
+			"L_symbol_to_string:" nl
+			tab "PUSH(FP);" nl
+			tab "MOV(FP, SP);" nl
+			tab "MOV(R1, INDD(FPARG(2),1));" nl
+			tab "MOV(R2, IMM(1));" nl
+			tab "MOV(R3, INDD(FPARG(2),1));" nl
+			tab "INCR(R3);" nl
+			tab "L_next_var_1:" nl
+			tab "INCR(R2);" nl
+			tab "PUSH(INDD(FPARG(2),IMM(R2)));" nl
+			tab "CMP(R3, R2);" nl
+			tab "JUMP_NE(L_next_var_1);" nl 
+			tab "PUSH(INDD(FPARG(2),1));" nl
+			tab "CALL(MAKE_SOB_STRING);" nl
+			tab "DROP(IMM(R3));" nl
+			"L_prim_symbol_to_string_Exit:" nl
+			tab "POP(FP);" nl
+			tab "RETURN;" nl
+			"L_symbol_to_string_cont:" nl
+			tab "MOV(IND(88), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(89), IMM(294755));" nl
+			tab "MOV(IND(90), LABEL(L_symbol_to_string));" nl
+			"#define SOB_PRIM_SYMBOL_TO_STRING 88" nl
+		)
+	)
+)
+
+(define prim_string->symbol
+	(lambda ()
+		(string-append
+			"/* primitive string->symbol */" nl
+			"JUMP(L_string_to_symbol_cont);" nl
+			"L_string_to_symbol:" nl
+  			tab "PUSH(FP); " nl                      
+  			tab "MOV(FP, SP); "  nl                 
+  			tab "MOV(R1,FPARG(2));" nl
+  			tab "MOV(R2,0);" nl
+		    "L_str_to_sym_loop:" nl
+		    tab "CMP(INDD(506,R2),T_SYMBOL);" nl 
+		    tab "JUMP_NE(L_str_to_sym_loop_end);" nl		
+		    tab "CMP(INDD(R2,507),R1);"nl
+		    tab "JUMP_EQ(L_str_to_sym_find);" nl
+			"L_str_to_sym_loop_end:"
+		    tab "CMP(R2,IND(3));" nl
+		    tab "ADD(R2,IMM(1));" nl
+		    tab "JUMP_LT(L_str_to_sym_loop);" nl
+			tab "MOV(R2,IND(4))" nl
+			tab "LOOP_LINKED_LIST:" nl
+		    tab "CMP(INDD(R2,2),0);" nl
+		    tab "JUMP_EQ(L_str_to_sym_mall);" nl
+		    tab "CMP(INDD(R2,2),R1);" nl
+		    tab "JUMP_NE(L_str_to_sym_lend);" nl		
+		    tab "MOV(R0,R2);" nl
+		    tab "ADD(R0,1);" nl
+		    tab "JUMP(string_to_symbol_exit_label);" nl    
+			tab "L_str_to_sym_lend:" nl
+		    tab "MOV(R2,IND(R2));" nl
+		    tab "JUMP(LOOP_LINKED_LIST);" nl
+			"L_str_to_sym_mall:" nl
+		    tab "PUSH(IMM(3));" nl
+		    tab "CALL(MALLOC);" nl
+		    tab "DROP(1);" nl
+		    tab "MOV(INDD(R2,0),R0);" nl
+		    tab "MOV(INDD(R2,1),T_SYMBOL);" nl
+		    tab "MOV(INDD(R2,0),R1);" nl
+		    tab "MOV(R0,R1);" nl
+		    tab "ADD(R0,1);" nl
+		    tab "JUMP(string_to_symbol_exit_label);" nl
+			"L_str_to_sym_find:" nl
+		    tab "MOV(R0,R2);" nl
+		    tab "ADD(R0,506);" nl
+			"string_to_symbol_exit_label:" nl
+			tab "MOV(R0, IND(R0));" nl
+		 	tab "POP(FP);" nl
+		  	tab "RETURN; " nl
+		  	"L_string_to_symbol_cont:" nl
+			tab "MOV(IND(91), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(92), IMM(989204));" nl
+			tab "MOV(IND(93), LABEL(L_string_to_symbol));" nl
+			"#define SOB_PRIM_STRING_TO_SYMBOL 91" nl
+		)
+ 	 )
+)
+
+(define prim+
+	(lambda ()
+		(string-append
+			"/* primitive plus (+)  */" nl
 			"JUMP(L_plus_cont);" nl
 			"L_prim_plus:" nl
 			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
-			tab "ADD(R0, INDD(FPARG(3),1)); //add the second value as long value" nl
+			tab "MOV(FP,SP);" nl
+			tab "MOV(R0,IMM(0));" nl
+			tab "MOV(R1,FPARG(1)); //number of elements" nl
+			tab "DECR(R1); //exclude magic box " nl
+			tab "CMP(R1,0);" nl
+			tab "JUMP_EQ(L_plus_Exit);" nl
+			tab "DECR(R1); // R1 holds number of loops " nl
+			tab "MOV(R2,IMM(3));" nl
+			tab "MOV(R0,FPARG(2)); //first element of the sum " nl
+			tab "MOV(R0,INDD(R0,1));" nl
+			"L_plus_begin_loop:" nl
+			tab "CMP(R1,IMM(0)); " nl
+			tab "JUMP_EQ(L_plus_Exit);" nl
+			tab "MOV(R3,FPARG(R2));//the next element to add" nl
+			tab "MOV(R3,INDD(R3,1));" nl
+			tab "ADD(R0,R3);//acumulating" nl
+			tab "INCR(R2);" nl
+			tab "DECR(R1);" nl
+			tab "JUMP(L_plus_begin_loop);" nl
+			"L_plus_Exit:" nl
 			tab "PUSH(R0);" nl
-			tab "CALL(MAKE_SOB_INTEGER);"
+			tab "CALL(MAKE_SOB_INTEGER); //create the SOB " nl
+			tab "DROP(1); " nl
 			tab "POP(FP);" nl
 			tab "RETURN;" nl
 			"L_plus_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(777096));" nl
-			tab "MOV(IND(66), LABEL(L_prim_plus));" nl
-			"#define SOB_PRIM_PLUS 64" nl
+			tab "MOV(IND(94), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(95), IMM(777096));" nl
+			tab "MOV(IND(96), LABEL(L_prim_plus));" nl
+			"#define SOB_PRIM_PLUS 94" nl
 		)
 	)
 )
 
-(define prim_bin-
+(define prim-
 	(lambda ()
 		(string-append
-			"/* primitive binary subtract (-)  */" nl
+			"/* primitive subtract (-)  */" nl
 			"JUMP(L_subtract_cont);" nl
 			"L_prim_subtract:" nl
-			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
-			tab "SUB(R0, INDD(FPARG(3),1)); //subtract the second value as long value" nl
-			tab "PUSH(R0);" nl
-			tab "CALL(MAKE_SOB_INTEGER);"
-			tab "POP(FP);" nl
-			tab "RETURN;" nl
+			"PUSH(FP);" nl
+			"MOV(FP,SP);" nl
+			"MOV(R1,FPARG(1)); //number of elements" nl
+			"DECR(R1); //exclude magic box " nl
+			"CMP(R1,1); //check for special case with 1 argument " nl
+			"JUMP_EQ(L_substract_special);" nl
+			"DECR(R1); // R1 holds number of loops" nl
+			"MOV(R2,IMM(3));" nl
+			"MOV(R0,FPARG(2)); //first element" nl
+			"MOV(R0,INDD(R0,1));" nl
+			"L_substract_begin_loop:" nl
+			"CMP(R1,IMM(0));" nl
+			"JUMP_EQ(L_substract_Exit);" nl 
+			"MOV(R3,FPARG(R2)); //the next element to subtract" nl
+			"MOV(R3,INDD(R3,1));" nl
+			"SUB(R0,R3); //result" nl
+			"INCR(R2);" nl
+			"DECR(R1);" nl
+			"JUMP(L_substract_begin_loop);" nl
+			"L_substract_special:" nl
+			"MOV(R1,FPARG(2));" nl
+			"MOV(R1,INDD(R1,1));" nl
+			"MOV(R0,IMM(0));" nl
+			"SUB(R0,R1);" nl
+
+			"L_substract_Exit:" nl
+			"PUSH(R0);" nl
+			"CALL(MAKE_SOB_INTEGER); //create the SOB" nl
+			"DROP(1);" nl
+			"POP(FP);" nl
+			"RETURN;" nl
 			"L_subtract_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(155936));" nl
-			tab "MOV(IND(66), LABEL(L_prim_subtract));" nl
-			"#define SOB_PRIM_SUBTRACT 64" nl
+			tab "MOV(IND(97), IMM(T_CLOSURE));" nl
+			tab "MOV(IND(98), IMM(155936));" nl
+			tab "MOV(IND(99), LABEL(L_prim_subtract));" nl
+			"#define SOB_PRIM_SUBTRACT 97" nl
 		)
 	)
 )
 
-(define prim_bin*
+(define prim*
 	(lambda ()
 		(string-append
-			"/* primitive binary multiplication (*)  */" nl
+			"/* primitive multiplication (*)  */" nl
 			"JUMP(L_mult_cont);" nl
 			"L_prim_mult:" nl
-			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
-			tab "MUL(R0, INDD(FPARG(3),1)); //multiply the second value as long value" nl
-			tab "PUSH(R0);" nl
-			tab "CALL(MAKE_SOB_INTEGER);"
-			tab "POP(FP);" nl
-			tab "RETURN;" nl
+			"PUSH(FP);" nl
+			"MOV(FP,SP);" nl
+			"MOV(R0,IMM(1));" nl
+			"MOV(R1,FPARG(1)); //number of elements" nl
+			"DECR(R1); //exclude magic box " nl
+			"CMP(R1,IMM(0));" nl
+			"JUMP_EQ(L_mult_Exit);" nl
+			"DECR(R1); // R1 holds number of loops" nl
+			"MOV(R2,IMM(3));" nl
+			"MOV(R0,FPARG(2)); //first element" nl
+			"MOV(R0,INDD(R0,1));" nl
+			"L_mult_begin_loop:" nl
+			"CMP(R1,IMM(0)); " nl
+			"JUMP_EQ(L_mult_Exit);" nl
+			"MOV(R3,FPARG(R2)); //the next element" nl
+			"MOV(R3,INDD(R3,1));" nl
+			"MUL(R0,R3);//result" nl
+			"INCR(R2);" nl
+			"DECR(R1);" nl
+			"JUMP(L_mult_begin_loop);" nl
+			"L_mult_Exit:" nl 
+			"PUSH(R0);" nl
+			"CALL(MAKE_SOB_INTEGER); //create the SOB" nl
+			"DROP(1);" nl
+			"POP(FP);" nl
+			"RETURN;" nl
+
 			"L_mult_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(721327));" nl
-			tab "MOV(IND(66), LABEL(L_prim_mult));" nl
-			"#define SOB_PRIM_MULTIPLY 64" nl
+			"MOV(IND(100), IMM(T_CLOSURE));" nl
+			"MOV(IND(101), IMM(721327));" nl
+			"MOV(IND(102), LABEL(L_prim_mult));" nl
+			"#define SOB_PRIM_MULTIPLY 100" nl
 		)
 	)
 )
 
-(define prim_bin/
+(define prim/
 	(lambda ()
 		(string-append
-			"/* primitive binary divide (/)  */" nl
+			"/* primitive divide (/)  */" nl
 			"JUMP(L_div_cont);" nl
 			"L_prim_div:" nl
-			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, INDD(FPARG(2),1)); //first value as long value" nl
-			tab "MUL(R0, INDD(FPARG(3),1)); //divide the second value as long value" nl
-			tab "PUSH(R0);" nl
-			tab "CALL(MAKE_SOB_INTEGER);"
-			tab "POP(FP);" nl
-			tab "RETURN;" nl
+			"PUSH(FP);" nl
+			"MOV(FP, SP);" nl
+			"MOV(R1,FPARG(1)); //number of elements" nl
+			"DECR(R1); //exclude magic box " nl
+			"DECR(R1); // R1 holds number of loops" nl
+			"MOV(R2,IMM(3));" nl
+			"MOV(R0,FPARG(2)); //first element" nl
+			"MOV(R0,INDD(R0,1));" nl
+			"L_div_begin_loop:" nl
+			"CMP(R1,IMM(0));" nl
+			"JUMP_EQ(L_div_Exit);" nl
+			"MOV(R3,FPARG(R2)); //next element" nl
+			"MOV(R3,INDD(R3,1));" nl
+			"DIV(R0,R3);//the result" nl
+			"INCR(R2);" nl
+			"DECR(R1);" nl
+			"JUMP(L_div_begin_loop);" nl
+			"L_div_Exit:" nl
+			"PUSH(R0);" nl
+			"CALL(MAKE_SOB_INTEGER); //create the SOB" nl
+			"DROP(1);" nl
+			"POP(FP);" nl
+			"RETURN;" nl
 			"L_div_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(775216));" nl
-			tab "MOV(IND(66), LABEL(L_prim_div));" nl
-			"#define SOB_PRIM_DIVIDE 64" nl
+			"MOV(IND(103), IMM(T_CLOSURE));" nl
+			"MOV(IND(104), IMM(775216));" nl
+			"MOV(IND(105), LABEL(L_prim_div));" nl
+			"#define SOB_PRIM_DIVIDE 103" nl
 		)
 	)
 )
 
-(define prim_bin<
+(define prim<?
 	(lambda ()
 		(string-append
-			"/* primitive binary smaller than (<)  */" nl
+			"/* primitive smaller than (<)  */" nl
 			"JUMP(L_smaller_cont);" nl
 			"L_prim_smaller:" nl
-			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, FPARG(2)); //first value" nl
-			tab "SUB(R0, FPARG(3)); //second value" nl
-			tab "CMP(R0, IMM(0));" nl
-			tab "JUMP_GE(L_prim_smaller_false); //if greater or equal to zero, then the result is false" nl
-			tab "MOV(R0, SOB_TRUE);"
-			tab "JUMP(L_prim_smaller_Exit);" nl
-			"L_prim_smaller_false:" nl
-			tab "MOV(R0, SOB_FALSE);" nl
-			"L_prim_smaller_Exit:" nl
-			tab "POP(FP);" nl
-			tab "RETURN;" nl
+			"PUSH(FP);" nl
+			"MOV(FP,SP);" nl
+			"MOV(R1,FPARG(1)); //R1 holds num of args" nl
+			"DECR(R1); //exclude magic box " nl
+			"MOV(R5,R1); //save number of args" nl
+			"DECR(R5);" nl
+			"MOV(R2, FPARG(2)); //first arg" nl
+			"MOV(R3, FPARG(3)); //second arg" nl
+			"MOV(R4, IMM(2)); //index for fparg" nl
+			"L_smaller_begin_loop:"
+			"CMP(R5,IMM(0)); " nl
+			"JUMP_EQ(L_smaller_True);" nl
+			"MOV(R2,FPARG(R4)); // LEFT ELEMENT" nl
+			"MOV(R2,INDD(R2,IMM(1))); " nl
+			"INCR(R4);" nl
+			"MOV(R3,FPARG(R4)); // right ELEMENT" nl
+			"MOV(R3,INDD(R3,IMM(1))); " nl
+			"CMP(R2,R3); " nl
+			"JUMP_GE(L_smaller_False);" nl
+			"DECR(R5);" nl
+			"JUMP(L_smaller_begin_loop);" nl
+			"L_smaller_True:"
+			"MOV(R0,IMM(SOB_TRUE)); //moving result of true" nl
+			"JUMP(L_smaller_Exit);" nl
+			"L_smaller_False:" nl
+			"MOV(R0,IMM(SOB_FALSE)); // moving result false" nl
+			"JUMP(L_smaller_Exit);" nl
+			"L_smaller_Exit:" nl
+			"POP(FP);" nl
+			"RETURN;" nl
 			"L_smaller_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(922870));" nl
-			tab "MOV(IND(66), LABEL(L_prim_smaller));" nl
-			"#define SOB_PRIM_SMALLER 64" nl
+			"MOV(IND(106), IMM(T_CLOSURE));" nl
+			"MOV(IND(107), IMM(922870));" nl
+			"MOV(IND(108), LABEL(L_prim_smaller));" nl
+			"#define SOB_PRIM_SMALLER 106" nl
 		)
 	)
 )
 
-(define prim_bin=
+(define prim>?
+	(lambda ()
+		(string-append
+			"/* primitive greater than (>)  */" nl
+			"JUMP(L_greater_cont);" nl
+			"L_prim_greater:" nl
+			"PUSH(FP);" nl
+			"MOV(FP,SP);" nl
+			"MOV(R1,FPARG(1)); //R1 holds num of args" nl
+			"DECR(R1); //exclude magic box " nl
+			"MOV(R5,R1); //save number of args" nl
+			"DECR(R5);" nl
+			"MOV(R2, FPARG(2)); //first arg" nl
+			"MOV(R3, FPARG(3)); //second arg" nl
+			"MOV(R4, IMM(2)); //index for fparg" nl
+			"L_greater_begin_loop:"
+			"CMP(R5,IMM(0)); " nl
+			"JUMP_EQ(L_greater_True);" nl
+			"MOV(R2,FPARG(R4)); // LEFT ELEMENT" nl
+			"MOV(R2,INDD(R2,IMM(1))); " nl
+			"INCR(R4);" nl
+			"MOV(R3,FPARG(R4)); // right ELEMENT" nl
+			"MOV(R3,INDD(R3,IMM(1))); " nl
+			"CMP(R2,R3); " nl
+			"JUMP_LE(L_greater_False);" nl
+			"DECR(R5);" nl
+			"JUMP(L_greater_begin_loop);" nl
+			"L_greater_True:"
+			"MOV(R0,IMM(SOB_TRUE)); //moving result of true" nl
+			"JUMP(L_greater_Exit);" nl
+			"L_greater_False:" nl
+			"MOV(R0,IMM(SOB_FALSE)); // moving result false" nl
+			"JUMP(L_greater_Exit);" nl
+			"L_greater_Exit:" nl
+			"POP(FP);" nl
+			"RETURN;" nl
+			"L_greater_cont:" nl
+			"MOV(IND(109), IMM(T_CLOSURE));" nl
+			"MOV(IND(110), IMM(922870));" nl
+			"MOV(IND(111), LABEL(L_prim_greater));" nl
+			"#define SOB_PRIM_GREATER 109" nl
+		)
+	)
+)
+
+(define prim=?
 	(lambda ()
 		(string-append
 			"/* primitive binary equal (=)  */" nl
 			"JUMP(L_equal_cont);" nl
 			"L_prim_equal:" nl
-			tab "PUSH(FP);" nl
-			tab "MOV(FP, SP);" nl
-			tab "MOV(R0, FPARG(2)); //first value" nl
-			tab "SUB(R0, FPARG(3)); //second value" nl
-			tab "CMP(R0, IMM(0));" nl
-			tab "JUMP_NE(L_prim_equal_false); " nl
-			tab "MOV(R0, SOB_TRUE);"
-			tab "JUMP(L_prim_equal_Exit);" nl
-			"L_prim_equal_false:" nl
-			tab "MOV(R0, SOB_FALSE);" nl
-			"L_prim_equal_Exit:" nl
-			tab "POP(FP);" nl
-			tab "RETURN;" nl
+			"PUSH(FP);" nl
+			"MOV(FP,SP);" nl
+			"MOV(R1,FPARG(1)); //R1 holds num of args" nl
+			"DECR(R1); //exclude magic box " nl
+			"ADD(R1, IMM(2)); // r1 hold n+2" nl
+			"MOV(R2,IMM(3)); //current arg tested" nl
+			"MOV(R3,FPARG(2)); " nl
+			"MOV(R3,INDD(R3,IMM(1))); " nl
+			"L_equal_begin_loop:" nl
+			"CMP(R2,R1);"
+			"JUMP_EQ(L_equal_True);" nl
+			"MOV(R7,FPARG(R2));" nl
+			"MOV(R7,INDD(R7,IMM(1))); " nl
+			"CMP(R7,R3); " nl
+			"JUMP_NE(L_equal_False);" nl
+			"INCR(R2);"
+			"JUMP(L_equal_begin_loop);" nl
+			"L_equal_True:" nl
+ 			"MOV(R0,IMM(SOB_TRUE)); //moving result of true" nl
+			"JUMP(L_equal_Exit);" nl
+			"L_equal_False:" nl
+			"MOV(R0,IMM(SOB_FALSE)); // moving result false" nl
+			"JUMP(L_equal_Exit);" nl
+			"L_equal_Exit:" nl
+			"POP(FP);" nl
+			"RETURN;" nl
 			"L_equal_cont:" nl
-			tab "MOV(IND(64), IMM(T_CLOSURE));" nl
-			tab "MOV(IND(65), IMM(152305));" nl
-			tab "MOV(IND(66), LABEL(L_prim_equal));" nl
-			"#define SOB_PRIM_EQUAL 64" nl
+			"MOV(IND(112), IMM(T_CLOSURE));" nl
+			"MOV(IND(113), IMM(152305));" nl
+			"MOV(IND(114), LABEL(L_prim_equal));" nl
+			"#define SOB_PRIM_EQUAL 112" nl
 		)
 	)
 )

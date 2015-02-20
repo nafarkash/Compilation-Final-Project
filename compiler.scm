@@ -55,19 +55,30 @@
 
 (define file->sexpr
 	(lambda (filename)
-		(let ((input (open-input-file filename)))
-			(letrec ((run
+		(let ((input (open-input-file filename))
+		      (extra (open-input-file "support-code.scm")))
+			(letrec ((run-input
 					(lambda ()
 						(let ((e (read input)))
 						(if (eof-object? e)
 							(begin (close-input-port input)
 								'())
-							(cons e (run))
+							(cons e (run-input))
+							)
+						))
+					)
+				(run-extra
+					(lambda ()
+						(let ((e (read extra)))
+						(if (eof-object? e)
+							(begin (close-input-port extra)
+								'())
+							(cons e (run-extra))
 							)
 						))
 					)
 			)
-			(run))
+			(append (run-extra) (run-input)))
 		)
 	)
 )
@@ -107,6 +118,7 @@
 		(string-append
 			"#include <stdio.h>" nl
 			"#include <stdlib.h>" nl
+			"#include <string.h>" nl
 
 			"/* change to 0 for no debug info to be printed: */" nl
 			"#define DO_SHOW 1" nl
@@ -126,10 +138,10 @@
 			  "#include \"arch/scheme.lib\"" nl
 			  "CONTINUE:" nl nl
 			  "ADD (IND(0), IMM(1000));" nl
-			  "#define SOB_VOID 100" nl
-			  "#define SOB_NIL 101" nl
-			  "#define SOB_FALSE 102" nl
-			  "#define SOB_TRUE 104" nl nl
+			  "#define SOB_VOID 500" nl
+			  "#define SOB_NIL 501" nl
+			  "#define SOB_FALSE 502" nl
+			  "#define SOB_TRUE 504" nl nl
 			  (prim_procedure)
 			  (prim_null)
 			  (prim_pair)
@@ -159,6 +171,15 @@
 			  (prim_char->integer)
 			  (prim_integer->char)
 			  (prim_eq)
+			  (prim_symbol->string)
+			  (prim_string->symbol)
+			  (prim+)
+			  (prim-)
+			  (prim*)
+			  (prim/)
+			  (prim<?)
+			  (prim>?)
+			  (prim=?)
 			  nl
 			  "/* begin of constant definition */ " nl nl nl
 
@@ -186,27 +207,105 @@
 	)
 )
 
+
+
 (define consts
 	(lambda ()
     	(let* ((lst (remove-comma))
-          	 (lst-size (length lst))
-           	(str (string-append "long mem_init[] = { "(apply string-append lst) " };//constsnts array\n"
-                                  (format "memcpy((void*) &IND(100), (void*) &mem_init, ~s*WORD_SIZE);\n\n\n" lst-size)
-            				          "/* start of generated code */" nl nl nl))
+          	   (lst-size (length lst))
+           	(str (string-append  ;"PUSH(" (number->string (length *ct*)) ");" nl
+           					"long mem_init[] = { "(apply string-append lst) " };//constsnts array" nl
+                                  (format "memcpy((void*) &IND(500), (void*) &mem_init, ~s*WORD_SIZE);" lst-size) nl nl
+            				          "/* start of generated code */" nl nl))
               )
     	str
     	)
 	)
 )
 
-(define *ct* 
-	`((100 ,(void) (,T_VOID))
-	  (101 () (,T_NIL))
-	  (102 #f (,T_BOOL 0))
-	  (104 #t (,T_BOOL 1)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;TO CHANGE FROM (member '(85 eq?) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+(define fvars
+	(lambda ()
+    	(let* ((vals (apply append (map cdr (cdr (member '(112 =) *fvarTable*)))))
+    			(with-commas (if (null? vals) (void) (append (list (format "~s "  234097)) (map (lambda (x) (format ", ~s " 234097)) (cdr vals)))))
+           	(str (if (null? vals) (void) (string-append  ;"PUSH(" (number->string (length *ct*)) ");\n"
+           					;"CALL(MALLOC);\n"
+           					;"DROP(1);\n"
+           					"long mem_init1[] = { "(apply string-append with-commas) " };//constsnts array" nl
+                                  (format "memcpy((void*) &IND(120), (void*) &mem_init1, ~s*WORD_SIZE);" (length with-commas)) nl nl
+            				          "/* start of generated code */" nl nl)))
+              )
+    	(if (null? vals)
+    		""
+    	str
+    	)
+    	)
+	)
 )
 
-(define mem_loc 106)
+(define *ct* 
+	`((500 ,(void) (,T_VOID))
+	  (501 () (,T_NIL))
+	  (502 #f (,T_BOOL 0))
+	  (504 #t (,T_BOOL 1)))
+)
+
+(define *fvarTable* 
+	`((1 procedure?)
+	  (4 null?)
+	  (7 pair?)
+	  (10 number?)
+	  (13 integer?)
+	  (16 char?)
+	  (19 boolean?)
+	  (22 symbol?)
+	  (25 string?)
+	  (28 vector?)
+	  (31 zero?)
+	  (34 car)
+	  (37 cdr)
+	  (40 cons)
+	  (43 string-length)
+	  (46 vector-length)
+	  (49 set-car!)
+	  (52 set-cdr!)
+	  (55 vector-set!)
+	  (58 string-set!)
+	  (61 string-ref)
+	  (64 vector-ref)
+	  (67 make-string)
+	  (70 make-vector)
+	  (73 remainder)
+	  (76 apply)
+	  (79 char->integer)
+	  (82 integer->char)
+	  (85 eq?)
+	  (88 symbol->string)
+	  (91 string->symbol)
+	  (94 +)
+	  (97 -)
+	  (100 *)
+	  (103 /)
+	  (106 <)
+	  (109 >)
+	  (112 =)
+		)
+)
+
+(define symbol-list 
+	(lambda ()
+		(string-append 
+			"PUSH(IMM(3));" nl
+			"CALL(MALLOC);" nl
+			"DROP(1);" nl 
+			"MOV(IND(800),R0);" nl
+		)
+	)
+)
+
+(define mem_loc 506)
+(define mem_loc1 120)
 
 (define addto-ct 
 	(lambda (e)
@@ -214,6 +313,16 @@
 			(set! *ct* (list e))
 			(let ((nct (append *ct* (list e))))
 				(set! *ct* nct))
+		)
+	)
+)
+
+(define addto-fvt 
+	(lambda (e)
+		(if (null? *fvarTable*)
+			(set! *fvarTable* (list e))
+			(let ((nct (append *fvarTable* (list e))))
+				(set! *fvarTable* nct))
 		)
 	)
 )
@@ -243,6 +352,20 @@
 	)
 )
 
+(define findConst
+	(lambda (e)
+		(let* ((vals (map cadr *ct*))
+			(doExist (member e vals)))
+			(if doExist
+				(let* ((indx (- (length *ct*) (length doExist))))
+					(car (list-ref *ct* indx)))
+				(error 'findConst
+						(format "I can't recognize this: ~s" e))
+			)
+		)
+	)
+)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -263,11 +386,16 @@
 (define compile-scheme-file
 	(lambda (input output)
 		(let* ((text (file->sexpr input))
+				(pe (map (lambda (x) (annotate-tc (pe->lex-pe (parse x)))) text))
+				;(constsFase (map constNeg (map (lambda (e)  (annotate-tc (pe->lex-pe (parse e)))) text)))
+				;(constsFase (createConstTable pe))
+				(fvarsFase (createfvarTable pe))
 			(parsed (string-append
 						(prolog)
+						(symbol-list)
 						(consts)
-						(apply string-append (map (lambda (e) 
-												(print-value (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0))) text))
+						(fvars)
+						(apply string-append (map (lambda (e) (print-value (code-gen (annotate-tc (pe->lex-pe (parse e))) 0 0))) text))
 						(epilog)
 					)))
 		(write2File parsed output))
@@ -275,6 +403,86 @@
 
 	)
 )
+
+(define constNeg
+	(lambda (e)
+		(if (pred-const? e) (findAddConst (cadr e)) '())
+	)
+)
+
+;;;fvars handling
+
+(define createfvarTable
+	(lambda (e)
+		(map expr->fvars e)
+	)
+)
+
+(define fvars-or
+  (lambda (e)
+    (apply append (map expr->fvars (cadr e)))))
+
+(define fvars-if
+  (lambda (e)
+    (let* ((test (cadr e))
+          (dit (caddr e))
+          (dif (cadddr e))
+          (lst `(,test ,dit ,dif)))
+    (apply append (map expr->fvars lst)))
+    )
+  )
+
+(define fvars-seq
+  (lambda (e)
+    (apply append (map expr->fvars (cadr e)))))
+
+(define fvars-lambda
+  (lambda (e)
+    (expr->fvars (caddr e))
+    )
+  )
+
+(define fvars-lambda-opt
+  (lambda (e)
+    (expr->fvars (cadddr e))
+    )
+  )
+
+
+(define fvars-define
+  (lambda (e)
+    (let* ((var (cadr e))
+           (body (caddr e))
+           (lst `(,var ,body)))
+    (apply append (map expr->fvars lst)))
+    )
+  )
+(define fvars-applic
+  (lambda (e)
+    (let* ((k (cadr e))
+           (params (caddr e))
+           (lst (cons k params)))
+    (apply append (map expr->fvars lst)))
+    )
+  )
+
+(define expr->fvars
+  (lambda (e)
+    (cond ((null? e) e)
+          ((pred-or? e) (fvars-or e))
+          ((pred-if? e) (fvars-if e))
+          ((pred-seq? e) (fvars-seq e))
+          ((pred-define? e) (fvars-define e))
+          ((pred-applic? e) (fvars-applic e))
+          ((pred-tc-applic? e) (fvars-applic e))
+          ((pred-lambda-simple? e) (fvars-lambda e))
+          ((pred-lambda-variadic? e) (fvars-lambda e))
+          ((pred-lambda-opt? e) (fvars-lambda-opt e))
+          ((pred-fvar? e) (findAddFvar e))
+          (else '())
+          )
+    )
+  )
 
 
 (define code-gen
@@ -857,50 +1065,76 @@
 
 (define code-gen-fvar
 	(lambda (e params env)
-		(with e
-			(lambda (fvar var)
-				(cond
-					((eq? var 'cons) (string-append "MOV(R0, IMM(SOB_PRIM_CONS));" nl))
-					((eq? var 'car) (string-append "MOV(R0, IMM(SOB_PRIM_CAR));" nl))
-					((eq? var 'cdr) (string-append "MOV(R0, IMM(SOB_PRIM_CDR));" nl))
-					((eq? var 'procedure?) (string-append "MOV(R0, IMM(SOB_PRIM_PROCEDURE));" nl))
-					((eq? var 'null?) (string-append "MOV(R0, IMM(SOB_PRIM_NULL));" nl))
-					((eq? var 'pair?) (string-append "MOV(R0, IMM(SOB_PRIM_PAIR));" nl))
-					((eq? var 'number?) (string-append "MOV(R0, IMM(SOB_PRIM_NUMBER));" nl))
-					((eq? var 'integer?) (string-append "MOV(R0, IMM(SOB_PRIM_INTEGER));" nl))
-					((eq? var 'char?) (string-append "MOV(R0, IMM(SOB_PRIM_CHAR));" nl))
-					((eq? var 'boolean?) (string-append "MOV(R0, IMM(SOB_PRIM_BOOLEAN));" nl))
-					((eq? var 'symbol?) (string-append "MOV(R0, IMM(SOB_PRIM_SYMBOL));" nl))
-					((eq? var 'string?) (string-append "MOV(R0, IMM(SOB_PRIM_STRING));" nl))
-					((eq? var 'vector?) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR));" nl))
-					((eq? var 'zero?) (string-append "MOV(R0, IMM(SOB_PRIM_ZERO));" nl))
-					((eq? var 'string-length) (string-append "MOV(R0, IMM(SOB_PRIM_STRING_LENGTH));" nl))
-					((eq? var 'vector-length) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_LENGTH));" nl))
-					((eq? var 'set-car!) (string-append "MOV(R0, IMM(SOB_PRIM_SET_CAR));" nl))
-					((eq? var 'set-cdr!) (string-append "MOV(R0, IMM(SOB_PRIM_SET_CDR));" nl))
-					((eq? var 'vector-set!) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_SET));" nl))
-					((eq? var 'string-set!) (string-append "MOV(R0, IMM(SOB_PRIM_STRING_SET));" nl))
-					((eq? var 'string-ref) (string-append "MOV(R0, IMM(SOB_PRIM_STRING_REF));" nl))
-					((eq? var 'vector-ref) (string-append "MOV(R0, IMM(SOB_PRIM_VECTOR_REF));" nl))
-					((eq? var 'make-string) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_STRING));" nl))
-					((eq? var 'make-vector) (string-append "MOV(R0, IMM(SOB_PRIM_MAKE_VECTOR));" nl))
-					((eq? var 'remainder) (string-append "MOV(R0, IMM(SOB_PRIM_REMAINDER));" nl))
-					((eq? var 'apply) (string-append "MOV(R0, IMM(SOB_PRIM_APPLY));" nl))
-					((eq? var 'char->integer) (string-append "MOV(R0, IMM(SOB_PRIM_CHAR_TO_INTEGER));" nl))
-					((eq? var 'integer->char) (string-append "MOV(R0, IMM(SOB_PRIM_INTEGER_TO_CHAR));" nl))
-					((eq? var 'eq?) (string-append "MOV(R0, IMM(SOB_PRIM_EQ));" nl))
-					(else (error 'code-gen-fvar
-						(format "variable ~s is not bound" var)))
+		(let ((address  (findFvar (cadr e))))
+			(if (< address 120)
+    			(string-append
+    				"\n/* code gen for fvar*/\n " nl
+        			"MOV(R0 ,IMM(" (number->string address) "));" nl 
+        			"\n/* code gen for fvar*/\n " nl
+				)
+    			(string-append
+    				"\n/* code gen for fvar*/\n " nl
+        			"MOV(R0 ,IND(" (number->string address) "));" nl 
+        			"\n/* code gen for fvar*/\n " nl
 				)
 			)
 		)
 	)
 )
 
+(define findAddFvar
+	(lambda (e)	
+		
+		(let* ((vals (map cdr *fvarTable*))
+				(doExist (member (cdr e) vals)))
+			(if doExist
+				(let* ((indx (- (length *fvarTable*) (length doExist))))
+					e)
+				(begin
+					
+						(addto-fvt `(,mem_loc1 ,(cadr e)))
+						(set! mem_loc1 (+ mem_loc1 1))
+					e)
+			)
+		)
+	)
+)
+
+(define findFvar
+	(lambda (e)	
+		(let* ((vals (map cadr *fvarTable*))
+				(doExist (member e vals)))
+			(if doExist
+				(let* ((indx (- (length *fvarTable*) (length doExist))))
+					(car (list-ref *fvarTable* indx)))
+				(error 'findFvar
+						(format "I can't recognize this: ~s" e))	
+			)
+		)
+	)
+)
+
+(define code-gen-define
+  (lambda  (e params env)
+  	(let* ((address (findFvar (cadadr e)))
+  			)
+  	(string-append "\n/* code gen for define*/\n " nl
+  		(code-gen (caddr e) params env)
+  	 	"MOV(IND(" (number->string address) "), IMM(R0)); " nl
+  	 	"MOV(R0, IMM(SOB_VOID));" nl
+  	 	"\n/* End code gen for define*/\n "nl
+  	)
+  	)
+  	
+  )
+)
+
 (define code-gen-const
   (lambda  (e)
   	(let ((expr (cadr e)))
-    	(string-append "MOV(R0," (number->string (findAddConst expr)) ");" nl)
+    	(string-append "\n/* code gen for const*/\n " nl
+    		"MOV(R0," (number->string (findAddConst expr)) ");" nl
+    		"\n/* Endcode gen for const*/\n " nl )
 	)
   )
 )

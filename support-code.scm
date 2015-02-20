@@ -1,61 +1,42 @@
-;;; support-code.scm
-;;;
-;;; Part of the initial environment that you will need to provide with
-;;; your compiler, but written in [very elementary] Scheme. Put
-;;; otherwise, your compiler will have to be able to compile this code
-;;; in order to provide it.
-;;;
-;;; Programmer: Mayer Goldberg, 2012
+(define map
+  ((lambda (y) 
+     ((lambda (map1) 
+	((lambda (maplist) 
+	   (lambda (f . s) 
+	     (maplist f s))) 
+	 (y (lambda (maplist) 
+	      (lambda (f s) 
+		(if (null? (car s)) '() 
+		    (cons (apply f (map1 car s)) 
+			  (maplist f (map1 cdr s))))))))) 
+      (y (lambda (map1) 
+	   (lambda (f s) 
+	     (if (null? s) '() 
+		 (cons (f (car s)) 
+		       (map1 f (cdr s))))))))) 
+   (lambda (f) 
+     ((lambda (x) 
+	(f (lambda (y z)
+	     ((x x) y z))))
+      (lambda (x) 
+	(f (lambda (y z)
+	     ((x x) y z))))))))
 
-;;; the following should be re-implemented in cisc assembly:
 
-(define bin+ (lambda (x y) (+ x y)))
-(define bin- (lambda (x y) (- x y)))
-(define bin* (lambda (x y) (* x y)))
-(define bin/ (lambda (x y) (/ x y)))
+(define Ym
+  (lambda fs
+    (let ((ms (map
+    (lambda (fi)
+      (lambda ms
+        (apply fi (map (lambda (mi)
+             (lambda args
+               (apply (apply mi ms) args))) ms))))
+    fs)))
+      (apply (car ms) ms))))
 
-;;; rename ++ to +
 
-(define +
-  (letrec ((loop
-	    (lambda (s)
-	      (if (null? s)
-		  0
-		  (bin+ (car s)
-			(loop (cdr s)))))))
-    (lambda s (loop s))))
-
-;;; rename ** to *
-
-(define *
-  (letrec ((loop
-	    (lambda (s)
-	      (if (null? s)
-		  1
-		  (bin* (car s)
-			(loop (cdr s)))))))
-    (lambda s (loop s))))
-
-;;; rename -- to -
-
-(define -
-  (lambda (a . s)
-    (if (null? s)
-	(bin- 0 a)
-	(bin- a (apply + s)))))
-
-;;; rename // to /
-
-(define /
-  (lambda (a . s)
-    (if (null? s)
-	(bin/ 1 a)
-	(bin/ a (apply * s)))))
-
-;;;
-
-(define add1 (lambda (n) (bin+ n 1))) 
-(define sub1 (lambda (n) (bin- n 1)))
+(define add1 (lambda (n) (+ n 1))) 
+(define sub1 (lambda (n) (- n 1)))
 
 (define order
   (lambda (<)
@@ -67,7 +48,6 @@
       (lambda (a . s)
 	(loop a s)))))
 
-;;; extension: a variadic not-equal
 (define <>
   (letrec ((loop
 	    (lambda (a s)
@@ -148,9 +128,6 @@
     (lambda (ch1 ch2)
       (int-op (char->integer ch1) (char->integer ch2)))))
 
-;;; You need to have the following binary boolean predicates:
-;;; bin<?
-;;; bin=?
 
 (define bin<? (lambda (a b) (< a b)))
 (define bin=? (lambda (a b) (= a b)))
@@ -159,9 +136,8 @@
 (define bin<=? (lambda (a b) (not (bin>? a b))))
 (define bin>=? (lambda (a b) (not (bin<? a b))))
 
-(define < (order bin<?))
+
 (define <= (order bin<=?))
-(define > (order bin>?))
 (define >= (order bin>=?))
 
 (define char=? (order (^char-op bin=?)))
@@ -257,29 +233,6 @@
 	(and (pair? e)
 	     (list? (cdr e))))))
 
-(define map
-  ((lambda (y) 
-     ((lambda (map1) 
-	((lambda (maplist) 
-	   (lambda (f . s) 
-	     (maplist f s))) 
-	 (y (lambda (maplist) 
-	      (lambda (f s) 
-		(if (null? (car s)) '() 
-		    (cons (apply f (map1 car s)) 
-			  (maplist f (map1 cdr s))))))))) 
-      (y (lambda (map1) 
-	   (lambda (f s) 
-	     (if (null? s) '() 
-		 (cons (f (car s)) 
-		       (map1 f (cdr s))))))))) 
-   (lambda (f) 
-     ((lambda (x) 
-	(f (lambda (y z)
-	     ((x x) y z))))
-      (lambda (x) 
-	(f (lambda (y z)
-	     ((x x) y z))))))))
 
 (define member?
   (lambda (a s)
@@ -288,8 +241,6 @@
 (define negative? (lambda (n) (< n 0)))
 
 (define positive? (lambda (n) (> n 0)))
-
-(define zero? (lambda (x) (= x 0)))
 
 (define vector (lambda args (list->vector args)))
 
@@ -396,9 +347,6 @@
 	  ((equal? (car s) a) s)
 	  (else (member a (cdr s))))))
 
-;;; this procedure is defined as an abstraction over assoc/assq,
-;;; with the potential to define assoc over new and interesting
-;;; predicates...
 (define ^associate
   (lambda (equal?)
     (letrec ((run
@@ -416,7 +364,7 @@
   (lambda (a b)
     (if (and (boolean? a) (boolean? b))
 	(if a b (not b))
-	#f ; should have generated an error message!
+	#f
 	)))
 
 (define equal?
@@ -424,28 +372,19 @@
     (letrec ((equal?
 	      (lambda (a b)
 		(cond
-		 ;; bool
 		 ((and (boolean? a) (boolean? b))
 		  (boolean=? a b))
-		 ;; char
 		 ((and (char? a) (char? b)) (char=? a b))
-		 ;; nil
 		 ((null? a) (null? b))
-		 ;; number
 		 ((and (number? a) (number? b)) (= a b))
-		 ;; pair
 		 ((and (pair? a) (pair? b))
 		  (and (equal? (car a) (car b))
 		       (equal? (cdr a) (cdr b))))
-		 ;; string
 		 ((and (string? a) (string? b)) (string=? a b))
-		 ;; symbol
 		 ((and (symbol? a) (symbol? b)) (eq? a b))
-		 ;; vector
 		 ((and (vector? a) (vector? b)
 		       (= (vector-length a) (vector-length b)))
 		  (equal? (vector->list a) (vector->list b)))
-		 ;; void
 		 ((eq? a void-object) (eq? b void-object))
 		 (else #f)))))
       equal?)))
@@ -454,10 +393,6 @@
   (let ((void-object
 	 (if #f #f)))
     (lambda () void-object)))
-
-(define void?
-  (let ((void-object (void)))
-    (lambda (x) (eq? x void-object))))
 
 (define string-append
   (lambda s
@@ -514,170 +449,3 @@
   (let ((binary-min (lambda (a b) (if (< a b) a b))))
     (lambda (a . s)
       (foldr binary-min a s))))
-
-;;; in principle, you need the (error ... ) procedure for this,
-;;; but as long as you don't call it everything should be fine.
-;;; alternately, you can implement it. :-)
-
-(define format
-  (letrec ((st0
-	    (lambda (fs args)
-	      (cond ((null? fs)
-		     (if (null? args)
-			 '()
-			 (error 'format "Too many arguments" args)))
-		    ((char=? (car fs) #\~) (st1 (cdr fs) args))
-		    (else (cons (car fs) (st0 (cdr fs) args))))))
-	   (st1
-	    (lambda (fs args)
-	      (cond ((null? fs) (st0 fs args))
-		    ((char=? (car fs) #\a)
-		     (append (string->list
-			      (sexpr->display-string
-			       (car args)))
-			     (st0 (cdr fs) (cdr args))))
-		    ((char=? (car fs) #\s)
-		     (append (string->list (sexpr->string (car args)))
-			     (st0 (cdr fs) (cdr args))))
-		    ((char=? (car fs) #\%)
-		     (cons #\newline (st0 (cdr fs) args)))
-		    ((char=? (car fs) #\~)
-		     (cons #\~ (st0 (cdr fs) args)))
-		    (else (error 'format
-				 "Unrecognized meta-character"
-				 (car fs)))))))
-    (lambda (format-string . args)
-      (list->string (st0 (string->list format-string) args)))))
-
-(define sexpr->string
-  (letrec ((run
-	    (lambda (e)
-	      (cond ((null? e) "()")
-		    ((boolean? e) (if e "#t" "#f"))
-		    ((char? e) (char->string e))
-		    ((number? e) (number->string e))
-		    ((symbol? e) (symbol->string e))
-		    ((pair? e)
-		     (string-append "(" (pair->string (car e) (cdr e)) ")"))
-		    ((string? e) (string->string e))
-		    ((vector? e) (vector->string e))
-		    ((void? e) "#<void>")
-		    ((procedure? e) "#<procedure>")
-		    (else (error 'sexpr->string "What's this" e)))))
-	   (vector->string
-	    (lambda (v)
-	      (let ((n (vector-length v))
-		    (s (vector->list v)))
-		(string-append
-		 "#"
-		 (run n)
-		 (run s)))))
-	   (string->string
-	    (letrec ((st0
-		      (lambda (s)
-			(cond ((null? s) '())
-			      ((char=? (car s) #\newline)
-			       (append '(#\\ #\n)
-				       (st0 (cdr s))))
-			      ((char=? (car s) #\return)
-			       (append '(#\\ #\r)
-				       (st0 (cdr s))))
-			      ((char=? (car s) #\\)
-			       (append '(#\\ #\\)
-				       (st0 (cdr s))))
-			      ((char=? (car s) #\")
-			       (append '(#\\ #\")
-				       (st0 (cdr s))))
-			      ((char<? (car s) #\space)
-			       (append '(#\\)
-				       (octal-chars (char->integer (car s)))
-				       (st0 (cdr s))))
-			      (else (cons (car s) (st0 (cdr s))))))))
-	      (lambda (string)
-		(list->string
-		 (append '(#\")
-			 (st0 (string->list string))
-			 '(#\"))))))
-	   (octal-chars
-		      (lambda (m)
-			(let* ((o3 (digit (remainder m 8)))
-			       (n (quotient m 8))
-			       (o2 (digit (remainder n 8)))
-			       (n (quotient n 8))
-			       (o1 (digit (remainder n 8)))
-			       (n (quotient n 8)))
-			  (if (zero? n)
-			      (list o1 o2 o3)
-			      (error 'octal-chars "Not an octal char" m)))))
-	   (digit
-	    (let ((ascii0 (char->integer #\0)))
-	      (lambda (n)
-		(integer->char (+ ascii0 n)))))
-	   (pair->string
-	    (lambda (a d)
-	      (let ((string-a (run a)))
-		(cond ((null? d) string-a)
-		      ((pair? d)
-		       (let ((string-d (pair->string (car d) (cdr d))))
-			 (string-append string-a " " string-d)))
-		      (else (let ((string-d (run d)))
-			      (string-append string-a " . " string-d)))))))
-	   (char->string
-	    (lambda (ch)
-	      (cond ((char=? ch #\newline) "#\\newline")
-		    ((char=? ch #\space) "#\\space")
-		    ((char=? ch #\tab) "#\\tab")
-		    ((char=? ch #\return) "#\\return")
-		    ((char<? ch #\space)
-		     (list->string
-		      (append '(#\# #\\)
-			      (octal-chars (char->integer ch)))))
-		    (else (list->string
-			   (list #\# #\\ ch)))))))
-    (lambda (e)
-      (if (void? e)
-	  ""
-	  (run e)))))
-
-(define sexpr->display-string
-  (letrec ((run
-	    (lambda (e)
-	      (cond ((null? e) "()")
-		    ((boolean? e) (if e "#t" "#f"))
-		    ((char? e) (char->string e))
-		    ((number? e) (number->string e))
-		    ((symbol? e) (symbol->string e))
-		    ((pair? e)
-		     (string-append "(" (pair->string (car e) (cdr e)) ")"))
-		    ((string? e) e)
-		    ((vector? e) (vector->string e))
-		    ((void? e) "#<void>")
-		    ((procedure? e) "#<procedure>")
-		    (else (error 'sexpr->string "What's this" e)))))
-	   (vector->string
-	    (lambda (v)
-	      (let ((n (vector-length v))
-		    (s (vector->list v)))
-		(string-append
-		 "#"
-		 (run n)
-		 (run s)))))
-	   (pair->string
-	    (lambda (a d)
-	      (let ((string-a (run a)))
-		(cond ((null? d) string-a)
-		      ((pair? d)
-		       (let ((string-d (pair->string (car d) (cdr d))))
-			 (string-append string-a " " string-d)))
-		      (else (let ((string-d (run d)))
-			      (string-append string-a " . " string-d)))))))
-	   (char->string
-	    (lambda (ch)
-	      (list->string
-	       (list ch)))))
-    (lambda (e)
-      (if (void? e)
-	  ""
-	  (run e)))))
-
-
